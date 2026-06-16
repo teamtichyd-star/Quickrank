@@ -1084,19 +1084,26 @@ Target area: Hyderabad, Telangana, India. Be specific.`;
   if(aiKeys.gemini){
     document.getElementById('chip-gemini').classList.add('active');
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${aiKeys.gemini}`,{
-        method:'POST', headers:{'Content-Type':'application/json'},
+      const useNewFormat = aiKeys.gemini.startsWith('AQ.');
+      const url = useNewFormat 
+        ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+        : `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${aiKeys.gemini}`;
+      const headers = useNewFormat
+        ? {'Content-Type':'application/json','x-goog-api-key':aiKeys.gemini}
+        : {'Content-Type':'application/json'};
+      const res = await fetch(url,{
+        method:'POST',
+        headers: headers,
         body:JSON.stringify({
           contents:[{parts:[{text:prompt}]}],
           generationConfig:{temperature:0.7,maxOutputTokens:1500}
         })
       });
       const data = await res.json();
+      console.log('Gemini full response:', JSON.stringify(data));
       if(data.candidates?.[0]?.content?.parts?.[0]?.text){
         output.textContent = data.candidates[0].content.parts[0].text;
         return;
-      } else {
-        console.log('Gemini response:', JSON.stringify(data));
       }
     } catch(e){ console.log('Gemini error:',e); }
   }
