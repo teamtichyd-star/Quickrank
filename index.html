@@ -1084,16 +1084,21 @@ Target area: Hyderabad, Telangana, India. Be specific.`;
   if(aiKeys.gemini){
     document.getElementById('chip-gemini').classList.add('active');
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${aiKeys.gemini}`,{
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${aiKeys.gemini}`,{
         method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+        body:JSON.stringify({
+          contents:[{parts:[{text:prompt}]}],
+          generationConfig:{temperature:0.7,maxOutputTokens:1500}
+        })
       });
       const data = await res.json();
       if(data.candidates?.[0]?.content?.parts?.[0]?.text){
         output.textContent = data.candidates[0].content.parts[0].text;
         return;
+      } else {
+        console.log('Gemini response:', JSON.stringify(data));
       }
-    } catch(e){}
+    } catch(e){ console.log('Gemini error:',e); }
   }
 
   // Try Groq
