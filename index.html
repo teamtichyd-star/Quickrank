@@ -1049,7 +1049,7 @@ function setAiMode(mode, el){
   el.classList.add('active');
 }
 
-async function runAI(){
+async function runAI() {
   const output = document.getElementById('aiOutput');
   output.textContent = '⏳ Generating AI suggestions...';
   document.querySelectorAll('.ai-provider-chip').forEach(c => c.classList.remove('active'));
@@ -1057,130 +1057,80 @@ async function runAI(){
   let aiKeys = {};
   try {
     const snap = await db.collection('users').doc(currentUser.uid).collection('config').doc('ai_keys').get();
-    if(snap.exists) aiKeys = snap.data();
-  } catch(e){}
+    if (snap.exists) aiKeys = snap.data();
+  } catch (e) {
+    console.log('Error loading keys:', e);
+  }
 
   const prompt = aiMode === 'general'
     ? `You are an expert SEO consultant for a business in Hyderabad, India. For the keyword "${currentAiKeyword}", provide:
-
 1. 📌 Optimized Title Tag (max 60 chars)
 2. 📝 Meta Description (max 155 chars)
-3. 🏷️ H1 Tag suggestion
+3. ️ H1 Tag suggestion
 4. 💡 3 Content Tips
 5. 🔗 5 Related Keywords
-
 Be specific and actionable. Format clearly.`
     : `You are a Local SEO expert for a business in Hyderabad, India. For the keyword "${currentAiKeyword}", provide:
-
 1. 📍 GMB Business Description (750 chars)
-2. 📢 2 GMB Post Drafts
-3. 🔑 5 Local Keywords with city/area modifiers
+2.  2 GMB Post Drafts
+3.  5 Local Keywords with city/area modifiers
 4. ⭐ Review Response Template
 5. 🏗️ Local Business Schema Markup (JSON-LD snippet)
-
 Target area: Hyderabad, Telangana, India. Be specific.`;
 
-  // Try Gemini
-  if(aiKeys.gemini){
+  // 1. Try Gemini
+  if (aiKeys.gemini) {
     document.getElementById('chip-gemini').classList.add('active');
     try {
-      const useNewFormat = aiKeys.gemini.startsWith('AQ.');
-      const url = useNewFormat 
-        ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
-        : `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${aiKeys.gemini}`;
-      const headers = useNewFormat
-        ? {'Content-Type':'application/json','x-goog-api-key':aiKeys.gemini}
-        : {'Content-Type':'application/json'};
-      const res = await fetch(url,{
-        method:'POST',
-        headers: headers,
-        body:JSON.stringify({
-          contents:[{parts:[{text:prompt}]}],
-          generationConfig:{temperature:0.7,maxOutputTokens:1500}
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${aiKeys.gemini}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1500 }
         })
       });
       const data = await res.json();
-      console.log('Gemini full response:', JSON.stringify(data));
-      if(data.candidates?.[0]?.content?.parts?.[0]?.text){
+      console.log('Gemini response:', data);
+      if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text) {
         output.textContent = data.candidates[0].content.parts[0].text;
         return;
       }
-    } catch(e){ console.log('Gemini error:',e); }
+    } catch (e) {
+      console.log('Gemini error:', e);
+    }
   }
 
-  // Try Groq
-  if(aiKeys.groq){
-    document.getElementById('chip-gemini').classList.remove('active');
+  // 2. Try Groq
+  if (aiKeys.groq) {
     document.getElementById('chip-groq').classList.add('active');
     try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiKeys.groq}`},
-        body:JSON.stringify({model:'llama3-8b-8192',messages:[{role:'user',content:prompt}],max_tokens:1000})
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${aiKeys.groq}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 1000
+        })
       });
       const data = await res.json();
-      if(data.choices?.[0]?.message?.content){
+      console.log('Groq response:', data);
+      if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
         output.textContent = data.choices[0].message.content;
         return;
       }
-    } catch(e){}
+    } catch (e) {
+      console.log('Groq error:', e);
+    }
   }
 
-  // Try OpenAI
-  if(aiKeys.openai){
-    document.getElementById('chip-groq').classList.remove('active');
-    document.getElementById('chip-openai').classList.add('active');
-    try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiKeys.openai}`},
-        body:JSON.stringify({model:'gpt-3.5-turbo',messages:[{role:'user',content:prompt}],max_tokens:1000})
-      });
-      const data = await res.json();
-      if(data.choices?.[0]?.message?.content){
-        output.textContent = data.choices[0].message.content;
-        return;
-      }
-    } catch(e){}
-  }
-
-  // Try Mistral
-  if(aiKeys.mistral){
-    document.getElementById('chip-openai').classList.remove('active');
-    document.getElementById('chip-mistral').classList.add('active');
-    try {
-      const res = await fetch('https://api.mistral.ai/v1/chat/completions',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiKeys.mistral}`},
-        body:JSON.stringify({model:'mistral-small',messages:[{role:'user',content:prompt}],max_tokens:1000})
-      });
-      const data = await res.json();
-      if(data.choices?.[0]?.message?.content){
-        output.textContent = data.choices[0].message.content;
-        return;
-      }
-    } catch(e){}
-  }
-
-  // Try Claude
-  if(aiKeys.claude){
-    document.getElementById('chip-mistral').classList.remove('active');
-    document.getElementById('chip-claude').classList.add('active');
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':aiKeys.claude,'anthropic-version':'2023-06-01'},
-        body:JSON.stringify({model:'claude-3-haiku-20240307',max_tokens:1000,messages:[{role:'user',content:prompt}]})
-      });
-      const data = await res.json();
-      if(data.content?.[0]?.text){
-        output.textContent = data.content[0].text;
-        return;
-      }
-    } catch(e){}
-  }
-
-  output.textContent = '⚠️ No AI keys configured or all failed.\n\nGo to Settings → AI Provider Keys → Add Gemini key (free).\n\nGet free Gemini key at: makersuite.google.com/app/apikey';
+  // Fallback if both fail
+  output.textContent = '⚠️ No AI keys configured or all failed.\n\nGo to Settings → AI Provider Keys → Add Gemini key (free).\n\nGet free Gemini key at: aistudio.google.com/app/apikey';
 }
 
 // ===== NAVIGATION =====
