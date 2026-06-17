@@ -2439,7 +2439,7 @@ async function getSettingKey(keyName) {
   if (!user) return null;
   try {
     // First check apikeys settings doc
-    const doc = await firebase.firestore().collection('users').doc(user.uid).collection('settings').doc('apikeys').get();
+    const doc = await firebase.firestore().collection('users').doc(user.uid).collection('settings').doc('aikeys').get();
     if (doc.exists && doc.data()[keyName]) return doc.data()[keyName];
     
     // Fallback: check current company doc (where saveCompanySettings stores Places Key)
@@ -2465,7 +2465,7 @@ async function getAIKey(provider) {
   const user = firebase.auth().currentUser;
   if (!user) return null;
   try {
-    const doc = await firebase.firestore().collection('users').doc(user.uid).collection('settings').doc('apikeys').get();
+    const doc = await firebase.firestore().collection('users').doc(user.uid).collection('settings').doc('aikeys').get();
     if (doc.exists) {
       const d = doc.data();
       return d[provider] || null;
