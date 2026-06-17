@@ -2257,7 +2257,7 @@ function renderManualReviews() {
     '<div style="font-size:32px;margin-bottom:8px;">⭐</div>' +
     '<div style="font-weight:700;color:#0a5c36;margin-bottom:8px;">15 Reviews · 4.5 ⭐ Rating</div>' +
     '<div style="font-size:13px;color:#666;margin-bottom:16px;">Live review data requires Google Business API verification.<br>Use AI below to get your review response strategy.</div>' +
-    '<button class="btn-primary" style="font-size:13px;" onclick="showGmbTab('aioptimize',document.querySelectorAll('#page-local .tab')[3]);document.getElementById('gmbAiFocus').value='reviews';document.getElementById('gmbAiKeyword').value='interior designers Hyderabad';">🤖 Get Review Strategy from AI</button>' +
+    '<button class="btn-primary" style="font-size:13px;" onclick="gmbAIReview()">🤖 Get Review Strategy from AI</button>' +
     '</div>';
 }
 
@@ -2645,6 +2645,16 @@ function showGmbTab(tab, el) {
   if (tab === 'mappack') loadMapKeywords();
   if (tab === 'reviews' && gmbAccessToken) fetchGMBReviews();
   if (tab === 'competitors') loadGmbCompetitors();
+}
+
+
+function gmbAIReview(){
+  showGmbTab('aioptimize', document.querySelectorAll('#page-local .tab')[3]);
+  var f=document.getElementById('gmbAiFocus');
+  var k=document.getElementById('gmbAiKeyword');
+  if(f)f.value='reviews';
+  if(k)k.value='interior designers Hyderabad';
+  runGmbAI();
 }
 
 function showToast(msg,isError=false){
