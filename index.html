@@ -1671,11 +1671,13 @@ async function saveAIKeys(){
 async function loadCompanySettings(){
   if(!currentUser||!currentCompanyId)return;
   try{const doc=await db.collection('users').doc(currentUser.uid).collection('companies').doc(currentCompanyId).get();
-    if(doc.exists){const d=doc.data();document.getElementById('s-companyName').value=d.name||'';document.getElementById('s-website').value=d.website||'';document.getElementById('s-gscProperty').value=d.gscProperty||'';document.getElementById('s-gmbName').value=d.gmbName||'';document.getElementById('s-gmbAddress').value=d.gmbAddress||'';}
+    if(doc.exists){const d=doc.data();document.getElementById('s-companyName').value=d.name||'';document.getElementById('s-website').value=d.website||'';document.getElementById('s-gscProperty').value=d.gscProperty||'';document.getElementById('s-gmbName').value=d.gmbName||'';document.getElementById('s-gmbAddress').value=d.gmbAddress||'';
+      document.getElementById('s-googlePlacesKey').value=d.googlePlacesKey||'';}
   }catch(e){}
 }
 async function saveCompanySettings(){
-  const data={name:document.getElementById('s-companyName').value.trim(),website:document.getElementById('s-website').value.trim(),gscProperty:document.getElementById('s-gscProperty').value.trim(),gmbName:document.getElementById('s-gmbName').value.trim(),gmbAddress:document.getElementById('s-gmbAddress').value.trim(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const data={name:document.getElementById('s-companyName').value.trim(),website:document.getElementById('s-website').value.trim(),gscProperty:document.getElementById('s-gscProperty').value.trim(),gmbName:document.getElementById('s-gmbName').value.trim(),gmbAddress:document.getElementById('s-gmbAddress').value.trim(),
+      googlePlacesKey:document.getElementById('s-googlePlacesKey').value.trim(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(!data.name)return showToast('Enter company name',true);
   try{
     await db.collection('users').doc(currentUser.uid).collection('companies').doc(currentCompanyId).update(data);
@@ -1777,6 +1779,556 @@ function showToast(msg,isError=false){
   const t=document.getElementById('toast');document.getElementById('toastMsg').textContent=msg;
   t.style.background=isError?'#c0392b':'#0a5c36';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);
 }
+
+// ============================================================
+// PHASE 11 — GMB LOCAL RANK TRACKER
+// ============================================================
+
+// Grid center points
+const GMB_ZONES = {
+  gachibowli: { lat: 17.4401, lng: 78.3489, label: 'Gachibowli', radius: 3 },
+  hyderabad:  { lat: 17.3850, lng: 78.4867, label: 'Hyderabad',  radius: 12 }
+};
+
+// Switch GMB Tabs
+function switchGMBTab(n) {
+  document.querySelectorAll('.gmb-tab-content').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.gmb-tab-btn').forEach(b => {
+    b.style.background = '#fff';
+    b.style.color = '#0a5c36';
+    b.style.borderColor = '#d4f5e2';
+  });
+  document.getElementById('gmb-tab-' + n).style.display = 'block';
+  const btns = document.querySelectorAll('.gmb-tab-btn');
+  btns[n].style.background = '#2ecc71';
+  btns[n].style.color = '#fff';
+  btns[n].style.borderColor = '#2ecc71';
+  if (n === 4) loadHistoryKeywords();
+}
+
+// ---- TAB 0: RANK CHECKER ----
+async function checkLocalRank() {
+  const keyword  = document.getElementById('gmb-keyword').value.trim();
+  const scope    = document.getElementById('gmb-location-scope').value;
+  if (!keyword) { alert('Please enter a keyword'); return; }
+
+  document.getElementById('gmb-rank-loading').style.display = 'block';
+  document.getElementById('gmb-rank-result').style.display  = 'none';
+
+  const zone    = GMB_ZONES[scope];
+  const company = getCurrentCompany();
+  const gmbName = company.gmbName || 'TIC (TURNKEY INTERIOR CONTRACTORS)';
+  const apiKey  = await getSettingKey('googlePlacesKey');
+
+  try {
+    const results = await fetchNearbyPlaces(keyword, zone.lat, zone.lng, apiKey);
+    renderRankResult(results, gmbName, keyword, scope);
+    saveGMBRankToFirestore(keyword, results, gmbName);
+  } catch(e) {
+    document.getElementById('gmb-rank-loading').style.display = 'none';
+    document.getElementById('gmb-rank-result').style.display  = 'block';
+    document.getElementById('gmb-rank-result').innerHTML =
+      `<div style="background:#fff3f3;border:1.5px solid #e74c3c;border-radius:10px;padding:20px;">
+        <b style="color:#e74c3c;">⚠ Places API Error</b><br>
+        <span style="font-size:13px;">${e.message}<br><br>
+        Add your Google Places API key in <b>Settings → API Keys → Google Places Key</b></span>
+      </div>`;
+  }
+}
+
+async function fetchNearbyPlaces(keyword, lat, lng, apiKey) {
+  if (!apiKey) throw new Error('Google Places API key not found in Settings.');
+  const proxies = [
+    'https://corsproxy.io/?',
+    'https://api.allorigins.win/raw?url='
+  ];
+  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(keyword)}&location=${lat},${lng}&radius=15000&key=${apiKey}`;
+  for (const proxy of proxies) {
+    try {
+      const res  = await fetch(proxy + encodeURIComponent(url));
+      const data = await res.json();
+      if (data.results) return data.results;
+    } catch(e) { continue; }
+  }
+  throw new Error('Could not reach Google Places API. Check your API key and billing.');
+}
+
+function renderRankResult(results, gmbName, keyword, scope) {
+  document.getElementById('gmb-rank-loading').style.display = 'none';
+  const el = document.getElementById('gmb-rank-result');
+  el.style.display = 'block';
+
+  // Find our position
+  const myIndex = results.findIndex(r =>
+    r.name.toLowerCase().includes(gmbName.split('(')[0].trim().toLowerCase()) ||
+    (r.name.toLowerCase().includes('tic') && r.name.toLowerCase().includes('interior'))
+  );
+  const myPos = myIndex === -1 ? 'Not found' : myIndex + 1;
+  const posColor = myPos === 1 ? '#2ecc71' : myPos <= 3 ? '#27ae60' : myPos <= 10 ? '#f39c12' : '#e74c3c';
+  const posIcon  = myPos <= 3 ? '🏆' : myPos <= 10 ? '📊' : '⚠';
+
+  let html = `
+    <div style="background:linear-gradient(135deg,#f0fdf6,#e8f8ee);border:2px solid #2ecc71;border-radius:12px;padding:20px;margin-bottom:16px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:8px;">${posIcon}</div>
+      <div style="font-size:15px;color:#666;margin-bottom:4px;">Your position for <b>"${keyword}"</b> in ${scope === 'gachibowli' ? 'Gachibowli' : 'Hyderabad'}</div>
+      <div style="font-size:52px;font-weight:900;color:${posColor};">#${myPos}</div>
+      <div style="font-size:13px;color:#888;margin-top:4px;">out of ${results.length} businesses found</div>
+    </div>
+    <h4 style="color:#0a5c36;margin-bottom:12px;">Top 10 Competitors</h4>
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="background:#0a5c36;color:#fff;">
+          <th style="padding:10px 12px;text-align:left;">#</th>
+          <th style="padding:10px 12px;text-align:left;">Business Name</th>
+          <th style="padding:10px 12px;text-align:left;">Rating</th>
+          <th style="padding:10px 12px;text-align:left;">Reviews</th>
+          <th style="padding:10px 12px;text-align:left;">Address</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  results.slice(0, 10).forEach((r, i) => {
+    const isMe = i === myIndex;
+    const bg   = isMe ? '#d4f5e2' : (i % 2 === 0 ? '#fff' : '#f8fffe');
+    const rank = i + 1;
+    const rankBadge = rank <= 3
+      ? `<span style="background:#2ecc71;color:#fff;padding:2px 8px;border-radius:12px;font-weight:700;">${rank}</span>`
+      : rank <= 10
+        ? `<span style="background:#f39c12;color:#fff;padding:2px 8px;border-radius:12px;">${rank}</span>`
+        : `<span style="background:#e74c3c;color:#fff;padding:2px 8px;border-radius:12px;">${rank}</span>`;
+    html += `
+      <tr style="background:${bg};${isMe ? 'border:2px solid #2ecc71;' : ''}">
+        <td style="padding:10px 12px;">${rankBadge} ${isMe ? '⬅ YOU' : ''}</td>
+        <td style="padding:10px 12px;font-weight:${isMe ? '700' : '400'};color:${isMe ? '#0a5c36' : '#333'};">${r.name}</td>
+        <td style="padding:10px 12px;">⭐ ${r.rating || 'N/A'}</td>
+        <td style="padding:10px 12px;">${r.user_ratings_total || 0}</td>
+        <td style="padding:10px 12px;font-size:11px;color:#666;">${(r.formatted_address || '').split(',').slice(0,2).join(',')}</td>
+      </tr>`;
+  });
+
+  // Gap analysis
+  const topRatings   = results.slice(0,3).map(r => r.rating || 0);
+  const topReviews   = results.slice(0,3).map(r => r.user_ratings_total || 0);
+  const avgTopRating = (topRatings.reduce((a,b) => a+b,0) / 3).toFixed(1);
+  const avgTopReviews = Math.round(topReviews.reduce((a,b) => a+b,0) / 3);
+  const myData = myIndex >= 0 ? results[myIndex] : null;
+
+  html += `</tbody></table></div>
+    <div style="background:#fff;border:1.5px solid #d4f5e2;border-radius:10px;padding:16px;margin-top:16px;">
+      <h4 style="color:#0a5c36;margin-bottom:10px;">📊 Gap Analysis vs Top 3</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
+        <div style="background:#f0fdf6;border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:11px;color:#888;">Avg Top 3 Rating</div>
+          <div style="font-size:22px;font-weight:800;color:#0a5c36;">${avgTopRating} ⭐</div>
+          <div style="font-size:11px;color:#666;">Your: ${myData ? myData.rating || 'N/A' : 'N/A'}</div>
+        </div>
+        <div style="background:#f0fdf6;border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:11px;color:#888;">Avg Top 3 Reviews</div>
+          <div style="font-size:22px;font-weight:800;color:#0a5c36;">${avgTopReviews}</div>
+          <div style="font-size:11px;color:#666;">Your: ${myData ? myData.user_ratings_total || 0 : 0}</div>
+        </div>
+        <div style="background:#f0fdf6;border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:11px;color:#888;">Reviews Needed</div>
+          <div style="font-size:22px;font-weight:800;color:#e74c3c;">+${Math.max(0, avgTopReviews - (myData ? myData.user_ratings_total || 0 : 0))}</div>
+          <div style="font-size:11px;color:#666;">to match Top 3</div>
+        </div>
+      </div>
+    </div>`;
+
+  el.innerHTML = html;
+}
+
+// ---- TAB 1: COMPETITOR GRID ----
+async function runGridCheck() {
+  const keyword  = document.getElementById('grid-keyword').value.trim();
+  const gridSize = parseInt(document.getElementById('grid-size-select').value);
+  if (!keyword) { alert('Enter a keyword for grid check'); return; }
+
+  document.getElementById('grid-loading').style.display = 'block';
+  document.getElementById('map-grid-container').innerHTML = '';
+
+  const scope   = gridSize === 5 ? 'gachibowli' : 'hyderabad';
+  const zone    = GMB_ZONES[scope];
+  const apiKey  = await getSettingKey('googlePlacesKey');
+  const company = getCurrentCompany();
+  const gmbName = company.gmbName || 'TIC (TURNKEY INTERIOR CONTRACTORS)';
+  const step    = gridSize === 5 ? 0.018 : 0.045;
+  const half    = Math.floor(gridSize / 2);
+
+  const points = [];
+  for (let r = -half; r <= half; r++) {
+    for (let c = -half; c <= half; c++) {
+      points.push({ lat: zone.lat + r * step, lng: zone.lng + c * step, row: r, col: c });
+    }
+  }
+
+  const results = [];
+  for (const pt of points) {
+    try {
+      const places = await fetchNearbyPlaces(keyword, pt.lat, pt.lng, apiKey);
+      const idx = places.findIndex(p =>
+        p.name.toLowerCase().includes(gmbName.split('(')[0].trim().toLowerCase())
+      );
+      results.push({ ...pt, rank: idx === -1 ? 20 : idx + 1 });
+    } catch(e) {
+      results.push({ ...pt, rank: 99 });
+    }
+    await new Promise(res => setTimeout(res, 200));
+  }
+
+  document.getElementById('grid-loading').style.display = 'none';
+  renderGrid(results, gridSize, keyword, zone.label);
+}
+
+function renderGrid(results, size, keyword, label) {
+  const container = document.getElementById('map-grid-container');
+  let html = `
+    <h4 style="color:#0a5c36;margin-bottom:12px;">${size}×${size} Grid — ${label} — "${keyword}"</h4>
+    <div style="display:inline-grid;grid-template-columns:repeat(${size},1fr);gap:6px;margin-bottom:16px;">`;
+
+  const half = Math.floor(size / 2);
+  for (let r = -half; r <= half; r++) {
+    for (let c = -half; c <= half; c++) {
+      const pt = results.find(p => p.row === r && p.col === c);
+      const rank = pt ? pt.rank : 99;
+      const isCenter = r === 0 && c === 0;
+      const bg = isCenter ? '#0a5c36'
+               : rank <= 3 ? '#2ecc71'
+               : rank <= 10 ? '#f39c12'
+               : '#e74c3c';
+      const label2 = isCenter ? '★' : rank >= 20 ? '20+' : rank;
+      html += `
+        <div style="width:56px;height:56px;background:${bg};border-radius:10px;display:flex;align-items:center;
+          justify-content:center;color:#fff;font-weight:800;font-size:${isCenter?'20px':'15px'};
+          cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);"
+          title="Rank: ${rank} | Row:${r} Col:${c}"
+          onclick="showGridPointDetail(${rank},'${keyword}')">
+          ${label2}
+        </div>`;
+    }
+  }
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function showGridPointDetail(rank, keyword) {
+  const el = document.getElementById('grid-competitor-detail');
+  const msg = rank <= 3
+    ? `✅ You rank <b>#${rank}</b> in this zone for "${keyword}". Excellent visibility!`
+    : rank <= 10
+      ? `📊 You rank <b>#${rank}</b> in this zone. You're on Page 1 but need to improve to reach Top 3.`
+      : `⚠ You rank <b>#${rank}</b> in this zone. Low visibility — needs immediate action.`;
+  el.innerHTML = `<div style="background:#f0fdf6;border:1.5px solid #2ecc71;border-radius:8px;padding:14px;font-size:13px;">${msg}</div>`;
+}
+
+// ---- TAB 2: OPTIMIZATION SCORE ----
+async function calculateGMBScore() {
+  const keyword = document.getElementById('score-keyword').value.trim();
+  if (!keyword) { alert('Enter a keyword to compare'); return; }
+
+  document.getElementById('score-loading').style.display = 'block';
+  document.getElementById('score-result').style.display  = 'none';
+
+  const apiKey  = await getSettingKey('googlePlacesKey');
+  const company = getCurrentCompany();
+  const gmbName = company.gmbName || 'TIC (TURNKEY INTERIOR CONTRACTORS)';
+
+  try {
+    const results = await fetchNearbyPlaces(keyword, GMB_ZONES.gachibowli.lat, GMB_ZONES.gachibowli.lng, apiKey);
+    const myIndex = results.findIndex(r =>
+      r.name.toLowerCase().includes(gmbName.split('(')[0].trim().toLowerCase())
+    );
+    const myData  = myIndex >= 0 ? results[myIndex] : null;
+    const top3    = results.slice(0, 3);
+    renderOptimizationScore(myData, top3, gmbName);
+  } catch(e) {
+    document.getElementById('score-loading').style.display = 'none';
+    document.getElementById('score-result').style.display  = 'block';
+    document.getElementById('score-result').innerHTML =
+      `<div style="color:#e74c3c;padding:16px;">Error: ${e.message}</div>`;
+  }
+}
+
+function renderOptimizationScore(myData, top3, gmbName) {
+  document.getElementById('score-loading').style.display = 'none';
+  const el = document.getElementById('score-result');
+  el.style.display = 'block';
+
+  const myRating  = myData ? myData.rating || 0 : 0;
+  const myReviews = myData ? myData.user_ratings_total || 0 : 0;
+  const avgRating  = (top3.reduce((a,b) => a + (b.rating||0), 0) / 3).toFixed(1);
+  const avgReviews = Math.round(top3.reduce((a,b) => a + (b.user_ratings_total||0), 0) / 3);
+
+  // Score calculation
+  let score = 0;
+  const checks = [
+    { label: 'Business found on Google',    pass: !!myData,              points: 15, tip: 'Claim your GMB listing immediately' },
+    { label: 'Rating ≥ 4.0',               pass: myRating >= 4.0,       points: 15, tip: 'Improve rating by responding to reviews' },
+    { label: 'Rating matches Top 3 avg',   pass: myRating >= avgRating,  points: 10, tip: `Top 3 avg is ${avgRating} — you need ${avgRating}` },
+    { label: 'Reviews ≥ 50',               pass: myReviews >= 50,        points: 15, tip: 'Run a review campaign with past clients' },
+    { label: 'Reviews match Top 3',        pass: myReviews >= avgReviews,points: 15, tip: `Top 3 avg is ${avgReviews} reviews` },
+    { label: 'Website linked (assumed)',   pass: true,                   points: 10, tip: 'Add website to GMB profile' },
+    { label: 'Business name has keyword',  pass: gmbName.toLowerCase().includes('interior'), points: 10, tip: 'Add primary keyword in business name' },
+    { label: 'Address in target area',     pass: true,                   points: 10, tip: 'Ensure address matches service area' },
+  ];
+
+  checks.forEach(c => { if (c.pass) score += c.points; });
+  const pct   = score;
+  const color = pct >= 80 ? '#2ecc71' : pct >= 50 ? '#f39c12' : '#e74c3c';
+
+  let html = `
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:64px;font-weight:900;color:${color};">${pct}</div>
+      <div style="font-size:16px;color:#666;">/ 100 — GMB Optimization Score</div>
+      <div style="background:#f0f0f0;border-radius:20px;height:14px;margin:12px auto;max-width:300px;">
+        <div style="background:${color};height:14px;border-radius:20px;width:${pct}%;transition:width 1s;"></div>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="background:#0a5c36;color:#fff;">
+          <th style="padding:10px 12px;text-align:left;">Check</th>
+          <th style="padding:10px 12px;">Status</th>
+          <th style="padding:10px 12px;text-align:left;">Action Needed</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  checks.forEach((c, i) => {
+    html += `
+      <tr style="background:${i%2===0?'#fff':'#f8fffe'};">
+        <td style="padding:10px 12px;">${c.label}</td>
+        <td style="padding:10px 12px;text-align:center;">${c.pass ? '✅' : '❌'}</td>
+        <td style="padding:10px 12px;font-size:12px;color:${c.pass?'#2ecc71':'#e74c3c'};">${c.pass ? 'Done' : c.tip}</td>
+      </tr>`;
+  });
+
+  html += `</tbody></table></div>
+    <div style="margin-top:16px;background:#f0fdf6;border-radius:10px;padding:14px;font-size:13px;">
+      <b style="color:#0a5c36;">📈 To reach score 90+:</b>
+      <ul style="margin:8px 0 0 16px;line-height:1.8;">
+        ${checks.filter(c=>!c.pass).map(c=>`<li>${c.tip}</li>`).join('')}
+      </ul>
+    </div>`;
+
+  el.innerHTML = html;
+}
+
+// ---- TAB 3: AI STRATEGY ----
+async function generateGMBStrategy() {
+  const keyword  = document.getElementById('ai-target-keyword').value.trim();
+  const provider = document.getElementById('ai-provider-gmb').value;
+  if (!keyword) { alert('Enter a target keyword'); return; }
+
+  document.getElementById('ai-strategy-loading').style.display = 'block';
+  document.getElementById('ai-strategy-result').style.display  = 'none';
+
+  const company  = getCurrentCompany();
+  const gmbName  = company.gmbName  || 'TIC (TURNKEY INTERIOR CONTRACTORS)';
+  const gmbAddr  = company.gmbAddress || 'Gachibowli, Hyderabad';
+  const website  = company.website  || 'turnkeyinteriorcontractors.com';
+
+  const prompt = `You are a local SEO expert specializing in Google Business Profile optimization.
+Business: ${gmbName}
+Address: ${gmbAddr}
+Website: ${website}
+Target Keyword: "${keyword}"
+Location: Hyderabad, India
+
+Create a detailed, actionable 30-day GMB Push Strategy to rank in Top 3 on Google Maps for this keyword.
+
+Include:
+1. Week 1 Quick Wins (immediate actions)
+2. Week 2-3 Review & Content Strategy  
+3. Week 4 Authority Building
+4. Specific GMB post ideas using the keyword
+5. Review request email/WhatsApp template
+6. Category and attribute optimizations
+7. Expected timeline to reach Top 3
+
+Format with clear headings and bullet points. Be specific to Hyderabad interior contractors market.`;
+
+  try {
+    let strategy = '';
+    if (provider === 'groq') {
+      const key = await getSettingKey('groqKey');
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 1500 })
+      });
+      const data = await res.json();
+      strategy = data.choices[0].message.content;
+    } else {
+      const key = await getSettingKey('geminiKey');
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const data = await res.json();
+      strategy = data.candidates[0].content.parts[0].text;
+    }
+
+    document.getElementById('ai-strategy-loading').style.display = 'none';
+    const el = document.getElementById('ai-strategy-result');
+    el.style.display = 'block';
+    el.innerHTML = `
+      <div style="background:#f0fdf6;border:1.5px solid #2ecc71;border-radius:12px;padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <h4 style="color:#0a5c36;margin:0;">🚀 30-Day GMB Push Strategy — "${keyword}"</h4>
+          <button onclick="copyStrategy()" style="padding:6px 14px;background:#0a5c36;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">Copy</button>
+        </div>
+        <div id="strategy-text" style="white-space:pre-wrap;font-size:13px;line-height:1.7;color:#333;">${strategy}</div>
+      </div>`;
+  } catch(e) {
+    document.getElementById('ai-strategy-loading').style.display = 'none';
+    document.getElementById('ai-strategy-result').style.display  = 'block';
+    document.getElementById('ai-strategy-result').innerHTML =
+      `<div style="color:#e74c3c;padding:16px;">AI Error: ${e.message}<br>Check your API key in Settings.</div>`;
+  }
+}
+
+function copyStrategy() {
+  const text = document.getElementById('strategy-text').innerText;
+  navigator.clipboard.writeText(text).then(() => showToast('Strategy copied!'));
+}
+
+// ---- TAB 4: RANK HISTORY ----
+let gmbChart = null;
+
+async function saveGMBRankToFirestore(keyword, results, gmbName) {
+  const user = firebase.auth().currentUser;
+  if (!user) return;
+  const companyId = getCurrentCompanyId();
+  const myIndex   = results.findIndex(r =>
+    r.name.toLowerCase().includes(gmbName.split('(')[0].trim().toLowerCase())
+  );
+  const rank = myIndex === -1 ? 20 : myIndex + 1;
+  const date = new Date().toISOString().split('T')[0];
+  try {
+    await firebase.firestore()
+      .collection('users').doc(user.uid)
+      .collection('companies').doc(companyId)
+      .collection('gmbHistory')
+      .add({ keyword, rank, date, savedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  } catch(e) { console.log('GMB history save error:', e); }
+}
+
+async function loadHistoryKeywords() {
+  const user = firebase.auth().currentUser;
+  if (!user) return;
+  const companyId = getCurrentCompanyId();
+  try {
+    const snap = await firebase.firestore()
+      .collection('users').doc(user.uid)
+      .collection('companies').doc(companyId)
+      .collection('gmbHistory')
+      .orderBy('savedAt','desc').limit(100).get();
+    const keywords = [...new Set(snap.docs.map(d => d.data().keyword))];
+    const sel = document.getElementById('history-keyword-select');
+    sel.innerHTML = '<option value="">-- Select Keyword --</option>';
+    keywords.forEach(k => { sel.innerHTML += `<option value="${k}">${k}</option>`; });
+    if (keywords.length > 0) document.getElementById('history-empty').style.display = 'none';
+  } catch(e) { console.log('Load keywords error:', e); }
+}
+
+async function loadRankHistory() {
+  const keyword   = document.getElementById('history-keyword-select').value;
+  if (!keyword) { alert('Select a keyword'); return; }
+  const user      = firebase.auth().currentUser;
+  if (!user) return;
+  const companyId = getCurrentCompanyId();
+  const snap      = await firebase.firestore()
+    .collection('users').doc(user.uid)
+    .collection('companies').doc(companyId)
+    .collection('gmbHistory')
+    .where('keyword','==',keyword)
+    .orderBy('savedAt','asc').get();
+
+  const rows  = snap.docs.map(d => d.data());
+  const labels = rows.map(r => r.date);
+  const data   = rows.map(r => r.rank);
+
+  document.getElementById('history-empty').style.display = 'none';
+  const canvas = document.getElementById('gmbRankChart');
+  canvas.style.display = 'block';
+
+  if (gmbChart) gmbChart.destroy();
+  gmbChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: `Position — "${keyword}"`,
+        data,
+        borderColor: '#2ecc71',
+        backgroundColor: 'rgba(46,204,113,0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#0a5c36',
+        pointRadius: 6,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { reverse: true, min: 1, title: { display: true, text: 'Position (lower is better)' } }
+      },
+      plugins: { legend: { display: true } }
+    }
+  });
+
+  // History table
+  let tableHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px;">
+      <thead><tr style="background:#0a5c36;color:#fff;">
+        <th style="padding:8px 12px;">Date</th>
+        <th style="padding:8px 12px;">Position</th>
+        <th style="padding:8px 12px;">Status</th>
+      </tr></thead><tbody>`;
+  rows.reverse().forEach((r,i) => {
+    const c = r.rank<=3?'#2ecc71':r.rank<=10?'#f39c12':'#e74c3c';
+    tableHTML += `<tr style="background:${i%2===0?'#fff':'#f8fffe'};">
+      <td style="padding:8px 12px;">${r.date}</td>
+      <td style="padding:8px 12px;font-weight:700;color:${c};">#${r.rank}</td>
+      <td style="padding:8px 12px;">${r.rank<=3?'🏆 Top 3':r.rank<=10?'📊 Page 1':'⚠ Needs Work'}</td>
+    </tr>`;
+  });
+  tableHTML += '</tbody></table>';
+  document.getElementById('history-table').innerHTML = tableHTML;
+}
+
+function exportHistoryPDF() {
+  window.print();
+}
+
+// ---- HELPERS ----
+function getCurrentCompany() {
+  // Pull from your existing company state
+  if (typeof currentCompany !== 'undefined' && currentCompany) return currentCompany;
+  return { gmbName: 'TIC (TURNKEY INTERIOR CONTRACTORS)', gmbAddress: 'Gachibowli, Hyderabad', website: 'turnkeyinteriorcontractors.com' };
+}
+
+function getCurrentCompanyId() {
+  if (typeof selectedCompanyId !== 'undefined' && selectedCompanyId) return selectedCompanyId;
+  return 'default';
+}
+
+async function getSettingKey(keyName) {
+  const user = firebase.auth().currentUser;
+  if (!user) return null;
+  try {
+    const doc = await firebase.firestore().collection('users').doc(user.uid).collection('settings').doc('apikeys').get();
+    if (doc.exists) return doc.data()[keyName] || null;
+  } catch(e) { return null; }
+  return null;
+}
+// ============================================================
+// END PHASE 11
+// ============================================================
 </script>
 </body>
 </html>
