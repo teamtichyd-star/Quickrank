@@ -2458,6 +2458,48 @@ async function getSettingKey(keyName) {
   return null;
 }
 // ============================================================
+
+
+// Get AI provider key from settings (Phase 11 helper)
+async function getAIKey(provider) {
+  const user = firebase.auth().currentUser;
+  if (!user) return null;
+  try {
+    const doc = await firebase.firestore().collection('users').doc(user.uid).collection('settings').doc('apikeys').get();
+    if (doc.exists) {
+      const d = doc.data();
+      return d[provider] || null;
+    }
+  } catch(e) { console.log('getAIKey error:', e); }
+  return null;
+}
+
+// Get current company helper (Phase 11)
+function getCurrentCompany() {
+  if (typeof currentCompany !== 'undefined' && currentCompany) return currentCompany;
+  if (typeof selectedCompany !== 'undefined' && selectedCompany) return selectedCompany;
+  return { gmbName: 'TIC (TURNKEY INTERIOR CONTRACTORS)', gmbAddress: 'Gachibowli, Hyderabad', website: 'turnkeyinteriorcontractors.com' };
+}
+
+// Get current company ID (Phase 11)
+function getCurrentCompanyId() {
+  if (typeof selectedCompanyId !== 'undefined' && selectedCompanyId) return selectedCompanyId;
+  if (typeof currentCompanyId !== 'undefined' && currentCompanyId) return currentCompanyId;
+  return 'default';
+}
+
+// Smart business matcher (Phase 11)
+function findMyBusiness(results, gmbName, company) {
+  if (!results || results.length === 0) return -1;
+  const website = (company.website || '').toLowerCase().replace(/https?:\/\//,'').replace(/\/$/,'').replace('www.','');
+  for (let i = 0; i < results.length; i++) {
+    const rName = (results[i].name || '').toLowerCase();
+    if (rName.includes('turnkey interior') || rName.includes('tic turnkey')) return i;
+    if (results[i].website && website && results[i].website.toLowerCase().includes(website)) return i;
+  }
+  return -1;
+}
+
 // END PHASE 11
 // ============================================================
 </script>
