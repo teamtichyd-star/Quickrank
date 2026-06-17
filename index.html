@@ -7,6 +7,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
 :root{--green1:#0a5c36;--green2:#1a7a4a;--green3:#2ecc71;--green4:#d4f5e2;--green5:#f0fdf6;--sidebar-width:260px;--topbar-height:60px;--shadow:0 2px 16px rgba(10,92,54,0.10);--radius:12px;}
@@ -55,9 +56,10 @@
 .nav-item svg{width:18px;height:18px;flex-shrink:0;fill:#888;}
 .nav-item.active svg{fill:#0a5c36;}
 .main{margin-left:var(--sidebar-width);margin-top:var(--topbar-height);padding:28px;min-height:calc(100vh - var(--topbar-height));}
-.page-header{margin-bottom:24px;}
+.page-header{margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
 .page-title{font-size:24px;font-weight:800;color:#0a5c36;margin-bottom:4px;}
 .page-subtitle{font-size:14px;color:#888;}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap;}
 .tabs{display:flex;gap:4px;background:#f0fdf6;padding:4px;border-radius:12px;margin-bottom:24px;flex-wrap:wrap;}
 .tab{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;color:#666;cursor:pointer;transition:all 0.2s;border:none;background:transparent;}
 .tab.active{background:#fff;color:#0a5c36;box-shadow:0 2px 8px rgba(10,92,54,0.12);}
@@ -75,6 +77,9 @@
 .search-input:focus{border-color:#2ecc71;}
 .add-btn{padding:8px 16px;background:linear-gradient(135deg,#0a5c36,#2ecc71);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
 .add-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(46,204,113,0.3);}
+.audit-btn{padding:10px 20px;background:linear-gradient(135deg,#8e44ad,#9b59b6);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;}
+.audit-btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(155,89,182,0.4);}
+.audit-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none;}
 .table-wrap{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;}
 th{padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;background:#f0fdf6;border-bottom:1px solid #d4f5e2;}
@@ -118,6 +123,7 @@ tr:hover td{background:#f9fffe;}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:3000;display:none;align-items:center;justify-content:center;padding:20px;}
 .modal-overlay.open{display:flex;}
 .modal{background:#fff;border-radius:20px;padding:32px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;}
+.modal.large{max-width:900px;}
 .modal h2{font-size:20px;font-weight:800;color:#0a5c36;margin-bottom:20px;}
 .form-group{margin-bottom:16px;}
 .form-label{display:block;font-size:13px;font-weight:600;color:#0a5c36;margin-bottom:6px;}
@@ -169,6 +175,42 @@ tr:hover td{background:#f9fffe;}
 .fetch-status{font-size:11px;color:#888;margin-top:6px;}
 .fetch-status.success{color:#2ecc71;}
 .fetch-status.error{color:#e74c3c;}
+.audit-progress{background:#f0fdf6;border:1.5px solid #d4f5e2;border-radius:12px;padding:20px;margin-bottom:20px;display:none;}
+.audit-progress.show{display:block;}
+.audit-progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.audit-progress-title{font-size:14px;font-weight:700;color:#0a5c36;}
+.audit-progress-stats{font-size:13px;color:#555;font-weight:600;}
+.progress-bar{height:8px;background:#d4f5e2;border-radius:4px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#0a5c36,#2ecc71);transition:width 0.3s;border-radius:4px;}
+.progress-current{font-size:12px;color:#888;margin-top:8px;}
+.audit-results{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid #d4f5e2;padding:20px;margin-bottom:20px;display:none;}
+.audit-results.show{display:block;}
+.audit-results-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #d4f5e2;flex-wrap:wrap;gap:10px;}
+.audit-results-title{font-size:16px;font-weight:700;color:#0a5c36;}
+.export-pdf-btn{padding:8px 16px;background:#e74c3c;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;}
+.export-pdf-btn:hover{background:#c0392b;}
+.audit-item{background:#f0fdf6;border:1px solid #d4f5e2;border-radius:10px;padding:14px;margin-bottom:10px;}
+.audit-item-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;cursor:pointer;}
+.audit-item-keyword{font-size:14px;font-weight:700;color:#0a5c36;flex:1;}
+.audit-score{display:inline-flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:50%;font-weight:800;font-size:16px;color:#fff;}
+.score-excellent{background:linear-gradient(135deg,#0a5c36,#2ecc71);}
+.score-good{background:linear-gradient(135deg,#1a7a4a,#3ddc83);}
+.score-fair{background:linear-gradient(135deg,#f39c12,#f1c40f);}
+.score-poor{background:linear-gradient(135deg,#e67e22,#e74c3c);}
+.audit-issues{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.audit-issue-badge{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;}
+.issue-critical{background:#fde8e8;color:#e74c3c;}
+.issue-warning{background:#fff3cd;color:#856404;}
+.issue-info{background:#d4f5e2;color:#0a5c36;}
+.audit-details{margin-top:12px;padding-top:12px;border-top:1px dashed #d4f5e2;display:none;}
+.audit-details.open{display:block;}
+.audit-details pre{white-space:pre-wrap;font-family:'Segoe UI',sans-serif;font-size:12px;color:#444;line-height:1.6;}
+.toggle-icon{transition:transform 0.2s;display:inline-block;}
+.toggle-icon.open{transform:rotate(90deg);}
+.audit-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;}
+.summary-card{background:#f0fdf6;border:1px solid #d4f5e2;border-radius:10px;padding:12px;text-align:center;}
+.summary-card-value{font-size:24px;font-weight:800;color:#0a5c36;}
+.summary-card-label{font-size:11px;color:#888;text-transform:uppercase;margin-top:4px;}
 @media(max-width:768px){
 .hamburger{display:flex;}
 .sidebar{transform:translateX(-100%);}
@@ -186,6 +228,7 @@ tr:hover td{background:#f9fffe;}
 .tabs{gap:2px;}
 .tab{padding:8px 12px;font-size:12px;}
 .modal{padding:24px 18px;}
+.audit-summary{grid-template-columns:repeat(2,1fr);}
 }
 </style>
 </head>
@@ -205,7 +248,7 @@ tr:hover td{background:#f9fffe;}
     <p>Free unlimited keyword rank tracker.<br>Track website & local GMB rankings.</p>
     <div class="features">
       <div class="feature-item"><svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>Unlimited keywords — 100% free</div>
-      <div class="feature-item"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>Local GMB map grid rankings</div>
+      <div class="feature-item"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>Bulk AI audit with PDF reports</div>
       <div class="feature-item"><svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/></svg>AI reads your live page content</div>
       <div class="feature-item"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Multi-company agency dashboard</div>
     </div>
@@ -219,7 +262,7 @@ tr:hover td{background:#f9fffe;}
 <div id="app">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="hamburger" onclick="toggleSidebar()" id="hamburger"><span></span><span></span><span></span></div>
+      <div class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
       <div class="topbar-logo">
         <div class="topbar-logo-icon"><svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg></div>
         <span>QuickRank<sup>PRO</sup></span>
@@ -258,18 +301,52 @@ tr:hover td{background:#f9fffe;}
   <div class="main" id="mainContent">
 
     <div id="page-ranktracker">
-      <div class="page-header"><div class="page-title">Rank Tracker</div><div class="page-subtitle">Track your keyword positions across Google Search & Local Maps</div></div>
+      <div class="page-header">
+        <div>
+          <div class="page-title">Rank Tracker</div>
+          <div class="page-subtitle">Track keywords + AI-powered bulk audits</div>
+        </div>
+        <div class="page-actions">
+          <button class="audit-btn" onclick="startBulkAudit()" id="bulkAuditBtn">
+            ⚡ Bulk AI Audit (All Keywords)
+          </button>
+        </div>
+      </div>
+
       <div class="tabs">
         <button class="tab active" onclick="showTab('rt','website',this)">🌐 Website Keywords</button>
         <button class="tab" onclick="showTab('rt','local',this)">📍 Local / GMB Rankings</button>
       </div>
+
       <div id="rt-website">
+        <div class="audit-progress" id="auditProgress">
+          <div class="audit-progress-header">
+            <div class="audit-progress-title">🔍 Bulk AI Audit Running...</div>
+            <div class="audit-progress-stats" id="auditStats">0 / 0</div>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+          <div class="progress-current" id="progressCurrent">Starting...</div>
+        </div>
+
+        <div class="audit-results" id="auditResults">
+          <div class="audit-results-header">
+            <div class="audit-results-title">📊 Audit Report</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="export-pdf-btn" onclick="exportAuditPDF()">📄 Export PDF</button>
+              <button class="ai-btn" onclick="closeAuditResults()">Close</button>
+            </div>
+          </div>
+          <div class="audit-summary" id="auditSummary"></div>
+          <div id="auditItems"></div>
+        </div>
+
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">Total Keywords</div><div class="stat-value" id="totalKw">0</div><div class="stat-change">Tracked keywords</div></div>
           <div class="stat-card"><div class="stat-label">Top 3</div><div class="stat-value" id="top3Kw" style="color:#2ecc71">0</div><div class="stat-change">↑ Positions</div></div>
           <div class="stat-card"><div class="stat-label">Top 10</div><div class="stat-value" id="top10Kw" style="color:#1a7a4a">0</div><div class="stat-change">Page 1</div></div>
           <div class="stat-card"><div class="stat-label">Avg Position</div><div class="stat-value" id="avgPos">—</div><div class="stat-change">All keywords</div></div>
         </div>
+
         <div class="table-card">
           <div class="table-header">
             <span class="table-title">Keywords</span>
@@ -294,10 +371,9 @@ tr:hover td{background:#f9fffe;}
             </div>
             <button class="close-btn" onclick="closeAiPanel()">×</button>
           </div>
-
           <div class="page-fetch-box">
-            <div style="font-size:12px;color:#0a5c36;font-weight:700;margin-bottom:8px;">📄 LIVE PAGE FETCHER (Optional but Recommended)</div>
-            <div style="font-size:11px;color:#666;margin-bottom:10px;">Fetch your actual page content for AI to give SPECIFIC recommendations instead of generic advice.</div>
+            <div style="font-size:12px;color:#0a5c36;font-weight:700;margin-bottom:8px;">📄 LIVE PAGE FETCHER</div>
+            <div style="font-size:11px;color:#666;margin-bottom:10px;">Fetch your page for SPECIFIC AI recommendations.</div>
             <div class="page-fetch-row">
               <input type="url" id="fetchUrl" placeholder="https://yourwebsite.com/page">
               <button class="fetch-btn" onclick="fetchPageContent()">📄 Fetch Page</button>
@@ -305,7 +381,6 @@ tr:hover td{background:#f9fffe;}
             <div class="fetch-status" id="fetchStatus"></div>
             <div class="page-preview" id="pagePreview"></div>
           </div>
-
           <div class="ai-mode-tabs">
             <button class="ai-mode-tab active" onclick="setAiMode('general',this)">General SEO</button>
             <button class="ai-mode-tab" onclick="setAiMode('local',this)">Local SEO</button>
@@ -316,7 +391,7 @@ tr:hover td{background:#f9fffe;}
               <select class="form-input" id="aiProviderSelect" style="cursor:pointer;">
                 <option value="groq">⚡ Groq (Llama 3.3 70B) — Free, Fast</option>
                 <option value="cerebras">🧠 Cerebras (GPT-OSS 120B) — Free, Quality</option>
-                <option value="gemini">✨ Gemini 2.0 Flash — Free, Google</option>
+                <option value="gemini">✨ Gemini 2.0 Flash — Free</option>
                 <option value="openrouter">🌐 OpenRouter — Free</option>
                 <option value="openai">💎 OpenAI GPT-4 — Paid</option>
                 <option value="claude">🎯 Claude 3 Haiku — Paid</option>
@@ -325,14 +400,15 @@ tr:hover td{background:#f9fffe;}
             </div>
             <button class="add-btn" onclick="runAI()" style="height:42px;padding:0 24px;">▶ Run AI</button>
           </div>
-          <div class="ai-output" id="aiOutput">Optionally fetch your page above, then select a model and click "Run AI".</div>
+          <div class="ai-output" id="aiOutput">Select a model and click "Run AI".</div>
           <div class="ai-meta" id="aiMeta" style="display:none;">
             <span class="ai-meta-badge" id="aiUsedModel">—</span>
             <span id="aiResponseTime">—</span>
-            <span id="aiPageStatus" style="display:none;" class="ai-meta-badge" style="background:#fff3cd;color:#856404;">📄 Page analyzed</span>
+            <span id="aiPageStatus" style="display:none;" class="ai-meta-badge">📄 Page analyzed</span>
           </div>
         </div>
       </div>
+
       <div id="rt-local" style="display:none;">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">GMB Keywords</div><div class="stat-value">0</div><div class="stat-change">Local tracked</div></div>
@@ -347,7 +423,7 @@ tr:hover td{background:#f9fffe;}
           </div>
           <div class="map-placeholder">
             <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-            <p>Map grid loads after adding a local keyword + SerpAPI key in Settings</p>
+            <p>Map grid loads after adding local keyword + SerpAPI key</p>
           </div>
           <div class="map-legend">
             <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>Top 3</div>
@@ -357,67 +433,32 @@ tr:hover td{background:#f9fffe;}
             <div class="legend-item"><div class="legend-dot" style="background:#bdc3c7"></div>Not found</div>
           </div>
         </div>
-        <div class="table-card">
-          <div class="table-header"><span class="table-title">Local Keywords</span></div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>Keyword</th><th>Map Pack Rank</th><th>Change</th><th>Grid Coverage</th><th>AI Optimize</th></tr></thead>
-            <tbody><tr><td colspan="5"><div class="empty-state">
-              <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-              <h3>No local keywords yet</h3><p>Add a local keyword to start tracking GMB rankings</p>
-            </div></td></tr></tbody>
-          </table></div>
-        </div>
       </div>
     </div>
 
     <div id="page-landing" style="display:none;">
-      <div class="page-header"><div class="page-title">Landing Pages</div><div class="page-subtitle">Monitor your landing page performance</div></div>
-      <div class="tabs">
-        <button class="tab active" onclick="showTab('lp','overview',this)">Overview</button>
-        <button class="tab" onclick="showTab('lp','serp',this)">SERP Benchmark</button>
-        <button class="tab" onclick="showTab('lp','backlink',this)">Backlink Profile</button>
-      </div>
-      <div id="lp-overview"><div class="empty-state" style="padding:80px 20px;"><h3>No landing pages tracked</h3><p>Coming soon</p></div></div>
-      <div id="lp-serp" style="display:none;"><div class="empty-state" style="padding:80px 20px;"><h3>SERP Benchmark</h3><p>Coming soon</p></div></div>
-      <div id="lp-backlink" style="display:none;"><div class="empty-state" style="padding:80px 20px;"><h3>Backlink Profile</h3><p>Coming soon</p></div></div>
+      <div class="page-header"><div><div class="page-title">Landing Pages</div><div class="page-subtitle">Monitor page performance</div></div></div>
+      <div class="empty-state" style="padding:80px 20px;"><h3>Coming in Phase 16</h3></div>
     </div>
 
     <div id="page-keywords" style="display:none;">
-      <div class="page-header"><div class="page-title">Keyword Research</div><div class="page-subtitle">Discover new keyword opportunities</div></div>
-      <div class="tabs">
-        <button class="tab active" onclick="showTab('kr','topics',this)">Topics</button>
-        <button class="tab" onclick="showTab('kr','seed',this)">Seed Keywords</button>
-        <button class="tab" onclick="showTab('kr','volume',this)">Volume & Difficulty</button>
-      </div>
-      <div id="kr-topics"><div class="empty-state" style="padding:80px 20px;"><h3>Coming soon</h3></div></div>
-      <div id="kr-seed" style="display:none;"><div class="empty-state" style="padding:80px 20px;"><h3>Coming soon</h3></div></div>
-      <div id="kr-volume" style="display:none;"><div class="empty-state" style="padding:80px 20px;"><h3>Coming soon</h3></div></div>
+      <div class="page-header"><div><div class="page-title">Keyword Research</div><div class="page-subtitle">Discover opportunities</div></div></div>
+      <div class="empty-state" style="padding:80px 20px;"><h3>Coming in Phase 13</h3></div>
     </div>
 
     <div id="page-competitors" style="display:none;">
-      <div class="page-header"><div class="page-title">Competitors</div><div class="page-subtitle">Track and analyze your SEO competitors</div></div>
-      <div class="tabs">
-        <button class="tab active" onclick="showTab('comp','rankcomp',this)">Rank Comparison</button>
-        <button class="tab" onclick="showTab('comp','backgap',this)">Backlink Gap</button>
-        <button class="tab" onclick="showTab('comp','serpoverlap',this)">SERP Overlap</button>
-      </div>
-      <div id="comp-rankcomp"><div class="empty-state" style="padding:80px 20px;"><h3>Coming soon</h3></div></div>
-      <div id="comp-backgap" style="display:none;"><div class="empty-state" style="padding:80px 20px;"><h3>Coming soon</h3></div></div>
-      <div id="comp-serpoverlap" style="display:none;"><div class="empty-state" style="padding:80px 20px;"><h3>Coming soon</h3></div></div>
+      <div class="page-header"><div><div class="page-title">Competitors</div><div class="page-subtitle">Track competitors</div></div></div>
+      <div class="empty-state" style="padding:80px 20px;"><h3>Coming in Phase 12</h3></div>
     </div>
 
     <div id="page-notifications" style="display:none;">
-      <div class="page-header"><div class="page-title">Notifications</div><div class="page-subtitle">Stay updated on ranking changes</div></div>
-      <div class="table-card">
-        <div class="table-header"><span class="table-title">Recent Alerts</span></div>
-        <div class="empty-state" style="padding:60px 20px;"><h3>No notifications yet</h3></div>
-      </div>
+      <div class="page-header"><div><div class="page-title">Notifications</div><div class="page-subtitle">Stay updated</div></div></div>
+      <div class="empty-state" style="padding:80px 20px;"><h3>Coming in Phase 15</h3></div>
     </div>
 
     <div id="page-settings" style="display:none;">
-      <div class="page-header"><div class="page-title">Settings</div><div class="page-subtitle">Configure companies, APIs and AI providers</div></div>
+      <div class="page-header"><div><div class="page-title">Settings</div><div class="page-subtitle">Configure everything</div></div></div>
       <div class="settings-grid">
-
         <div class="settings-card">
           <h3>🏢 Company Settings</h3>
           <div class="form-group"><label class="form-label">Company Name</label><input class="form-input" id="s-companyName"></div>
@@ -425,9 +466,8 @@ tr:hover td{background:#f9fffe;}
           <div class="form-group"><label class="form-label">GSC Property</label><input class="form-input" id="s-gscProperty"></div>
           <div class="form-group"><label class="form-label">GMB Location Name</label><input class="form-input" id="s-gmbName"></div>
           <div class="form-group"><label class="form-label">GMB Address</label><input class="form-input" id="s-gmbAddress"></div>
-          <button class="settings-save-btn" onclick="saveCompanySettings()">💾 Save Company Settings</button>
+          <button class="settings-save-btn" onclick="saveCompanySettings()">💾 Save</button>
         </div>
-
         <div class="settings-card">
           <h3>🤖 AI Provider Keys</h3>
           <p class="info-text"><strong>Recommended FREE:</strong> Groq + Cerebras</p>
@@ -439,13 +479,11 @@ tr:hover td{background:#f9fffe;}
           <div class="form-group"><div class="provider-label"><div class="provider-status" id="status-claude"></div>🎯 Claude</div><div class="api-key-row"><input class="form-input" type="password" placeholder="sk-ant-..." id="key-claude"><button class="save-key-btn" onclick="saveKey('claude')">Save</button></div></div>
           <div class="form-group"><div class="provider-label"><div class="provider-status" id="status-mistral"></div>🔮 Mistral</div><div class="api-key-row"><input class="form-input" type="password" placeholder="..." id="key-mistral"><button class="save-key-btn" onclick="saveKey('mistral')">Save</button></div></div>
         </div>
-
         <div class="settings-card">
-          <h3>🗺️ SerpAPI (Map Grid)</h3>
+          <h3>🗺️ SerpAPI</h3>
           <p class="info-text">For local GMB grid. Free: 100/month.</p>
           <div class="form-group"><div class="provider-label"><div class="provider-status" id="status-serp"></div>SerpAPI Key</div><div class="api-key-row"><input class="form-input" type="password" id="key-serp"><button class="save-key-btn" onclick="saveKey('serp')">Save</button></div></div>
         </div>
-
         <div class="settings-card">
           <h3>🔔 Notifications</h3>
           <div class="form-group"><label class="form-label">Rank drops more than</label><input class="form-input" type="number" id="s-dropAlert" value="5"></div>
@@ -453,23 +491,19 @@ tr:hover td{background:#f9fffe;}
           <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="s-notifEmail" value="teamtic.hyd@gmail.com"></div>
           <button class="settings-save-btn" onclick="saveNotificationSettings()">💾 Save</button>
         </div>
-
         <div class="settings-card">
           <h3>🏗️ Manage Companies</h3>
           <div id="settingsCompanyList"></div>
           <button class="add-btn" style="width:100%;margin-top:8px;" onclick="openAddCompany({stopPropagation:()=>{}})">+ Add New Company</button>
         </div>
-
         <div class="settings-card">
           <h3>👤 Account</h3>
           <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="s-userEmail" disabled></div>
           <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="s-userName" disabled></div>
           <button class="settings-save-btn" style="background:linear-gradient(135deg,#c0392b,#e74c3c);" onclick="signOut()">Sign Out</button>
         </div>
-
       </div>
     </div>
-
   </div>
 </div>
 
@@ -525,6 +559,8 @@ let currentAiUrl = '';
 let deleteKeywordId = null;
 let unsubscribeKeywords = null;
 let fetchedPageData = null;
+let auditResults = [];
+let auditInProgress = false;
 
 auth.onAuthStateChanged(async user => {
   document.getElementById('loading').style.display = 'none';
@@ -824,7 +860,7 @@ function openAiPanel(keyword, url){
   fetchedPageData = null;
   document.getElementById('aiKeyword').textContent = keyword;
   document.getElementById('fetchUrl').value = url || '';
-  document.getElementById('aiOutput').textContent = 'Optionally fetch your page above, then select a model and click "Run AI".';
+  document.getElementById('aiOutput').textContent = 'Optionally fetch page, then click "Run AI".';
   document.getElementById('aiMeta').style.display = 'none';
   document.getElementById('pagePreview').classList.remove('open');
   document.getElementById('fetchStatus').textContent = '';
@@ -840,115 +876,75 @@ function setAiMode(mode, el){
   el.classList.add('active');
 }
 
-// ===== PAGE FETCHER =====
 async function fetchPageContent() {
   const url = document.getElementById('fetchUrl').value.trim();
   const status = document.getElementById('fetchStatus');
   const preview = document.getElementById('pagePreview');
 
-  if (!url) {
-    status.textContent = '⚠️ Enter a URL first';
-    status.className = 'fetch-status error';
-    return;
-  }
-  if (!url.startsWith('http')) {
-    status.textContent = '⚠️ URL must start with http:// or https://';
+  if (!url || !url.startsWith('http')) {
+    status.textContent = '⚠️ Enter valid URL';
     status.className = 'fetch-status error';
     return;
   }
 
-  status.textContent = '⏳ Fetching page content...';
+  status.textContent = '⏳ Fetching...';
   status.className = 'fetch-status';
   preview.classList.remove('open');
   fetchedPageData = null;
 
-  // Try multiple CORS proxies for reliability
+  const data = await fetchAndParsePage(url);
+  if (data) {
+    fetchedPageData = data;
+    preview.innerHTML = `
+      <div class="preview-item"><div class="preview-label">📌 Title (${data.titleLen} chars)</div><div class="preview-value">${data.title || '<span class="preview-empty">Missing</span>'}</div></div>
+      <div class="preview-item"><div class="preview-label">📝 Meta (${data.metaDescLen} chars)</div><div class="preview-value">${data.metaDesc || '<span class="preview-empty">Missing</span>'}</div></div>
+      <div class="preview-item"><div class="preview-label">🏷️ H1 (${data.h1.length})</div><div class="preview-value">${data.h1.length ? data.h1.join(' | ') : '<span class="preview-empty">Missing</span>'}</div></div>
+      <div class="preview-item"><div class="preview-label">🏷️ H2 (${data.h2.length})</div><div class="preview-value">${data.h2.length ? data.h2.slice(0,5).join(' | ') : '<span class="preview-empty">None</span>'}</div></div>
+      <div class="preview-item"><div class="preview-label">🖼️ Images (${data.imgs.length}, ${data.imgsNoAlt} missing alt)</div><div class="preview-value">${data.imgsNoAlt > 0 ? `<span class="preview-empty">${data.imgsNoAlt} missing alt</span>` : 'All have alt ✅'}</div></div>
+      <div class="preview-item"><div class="preview-label">📄 ${data.wordCount} words</div><div class="preview-value" style="max-height:60px;overflow:hidden;">${data.bodyText.slice(0,200)}...</div></div>
+    `;
+    preview.classList.add('open');
+    status.textContent = '✅ Page fetched. AI will analyze YOUR content.';
+    status.className = 'fetch-status success';
+  } else {
+    status.textContent = '❌ All proxies failed';
+    status.className = 'fetch-status error';
+  }
+}
+
+async function fetchAndParsePage(url) {
   const proxies = [
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
   ];
-
   for (let i = 0; i < proxies.length; i++) {
     try {
       const res = await fetch(proxies[i]);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      if (!res.ok) continue;
       const html = await res.text();
-      if (!html || html.length < 100) throw new Error('Empty response');
-
-      // Parse HTML
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-
+      if (!html || html.length < 100) continue;
+      const doc = new DOMParser().parseFromString(html, 'text/html');
       const title = doc.querySelector('title')?.textContent?.trim() || '';
       const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() || '';
-      const metaKw = doc.querySelector('meta[name="keywords"]')?.getAttribute('content')?.trim() || '';
       const h1 = Array.from(doc.querySelectorAll('h1')).map(h => h.textContent.trim()).filter(Boolean);
       const h2 = Array.from(doc.querySelectorAll('h2')).map(h => h.textContent.trim()).filter(Boolean).slice(0, 8);
       const h3 = Array.from(doc.querySelectorAll('h3')).map(h => h.textContent.trim()).filter(Boolean).slice(0, 10);
-      const imgs = Array.from(doc.querySelectorAll('img')).slice(0, 10).map(img => ({
-        src: img.getAttribute('src') || '',
-        alt: img.getAttribute('alt') || ''
-      }));
+      const imgs = Array.from(doc.querySelectorAll('img')).slice(0, 10).map(img => ({src: img.getAttribute('src')||'', alt: img.getAttribute('alt')||''}));
       const imgsNoAlt = imgs.filter(i => !i.alt).length;
-      
-      // Get body text (clean)
       doc.querySelectorAll('script, style, nav, header, footer').forEach(el => el.remove());
       const bodyText = (doc.body?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 2500);
-
-      fetchedPageData = {
-        url, title, metaDesc, metaKw, h1, h2, h3, imgs, imgsNoAlt, bodyText,
-        titleLen: title.length,
-        metaDescLen: metaDesc.length,
-        wordCount: bodyText.split(/\s+/).length
-      };
-
-      // Show preview
-      preview.innerHTML = `
-        <div class="preview-item">
-          <div class="preview-label">📌 Title (${title.length} chars)</div>
-          <div class="preview-value">${title || '<span class="preview-empty">Missing</span>'}</div>
-        </div>
-        <div class="preview-item">
-          <div class="preview-label">📝 Meta Description (${metaDesc.length} chars)</div>
-          <div class="preview-value">${metaDesc || '<span class="preview-empty">Missing</span>'}</div>
-        </div>
-        <div class="preview-item">
-          <div class="preview-label">🏷️ H1 Tags (${h1.length})</div>
-          <div class="preview-value">${h1.length ? h1.join(' | ') : '<span class="preview-empty">Missing</span>'}</div>
-        </div>
-        <div class="preview-item">
-          <div class="preview-label">🏷️ H2 Tags (${h2.length})</div>
-          <div class="preview-value">${h2.length ? h2.slice(0,5).join(' | ') : '<span class="preview-empty">None</span>'}</div>
-        </div>
-        <div class="preview-item">
-          <div class="preview-label">🖼️ Images (${imgs.length} total, ${imgsNoAlt} missing alt)</div>
-          <div class="preview-value">${imgsNoAlt > 0 ? `<span class="preview-empty">${imgsNoAlt} images missing alt text!</span>` : 'All images have alt text ✅'}</div>
-        </div>
-        <div class="preview-item">
-          <div class="preview-label">📄 Content (${fetchedPageData.wordCount} words)</div>
-          <div class="preview-value" style="max-height:60px;overflow:hidden;">${bodyText.slice(0,200)}...</div>
-        </div>
-      `;
-      preview.classList.add('open');
-      status.textContent = `✅ Page fetched successfully via proxy ${i+1}. AI will now analyze YOUR actual content.`;
-      status.className = 'fetch-status success';
-      return;
-    } catch (e) {
-      console.log(`Proxy ${i+1} failed:`, e.message);
-    }
+      return {url, title, metaDesc, h1, h2, h3, imgs, imgsNoAlt, bodyText, titleLen: title.length, metaDescLen: metaDesc.length, wordCount: bodyText.split(/\s+/).length};
+    } catch (e) { continue; }
   }
-
-  status.textContent = '❌ All proxies failed. Page might block scraping. Try a different URL.';
-  status.className = 'fetch-status error';
+  return null;
 }
 
 async function runAI() {
   const output = document.getElementById('aiOutput');
   const meta = document.getElementById('aiMeta');
   const provider = document.getElementById('aiProviderSelect').value;
-  
-  output.textContent = '⏳ Generating AI suggestions...';
+  output.textContent = '⏳ Generating...';
   meta.style.display = 'none';
   const startTime = Date.now();
 
@@ -958,181 +954,251 @@ async function runAI() {
     if (snap.exists) aiKeys = snap.data();
   } catch (e) {}
 
-  // Build context from fetched page
-  let pageContext = '';
-  if (fetchedPageData) {
-    pageContext = `
-
-═══════════════════════════════════════
-📄 ACTUAL PAGE CONTENT FROM ${fetchedPageData.url}
-═══════════════════════════════════════
-CURRENT TITLE TAG (${fetchedPageData.titleLen} chars): ${fetchedPageData.title || 'MISSING'}
-CURRENT META DESCRIPTION (${fetchedPageData.metaDescLen} chars): ${fetchedPageData.metaDesc || 'MISSING'}
-CURRENT META KEYWORDS: ${fetchedPageData.metaKw || 'None'}
-CURRENT H1 TAGS: ${fetchedPageData.h1.join(' | ') || 'MISSING'}
-CURRENT H2 TAGS: ${fetchedPageData.h2.join(' | ') || 'None'}
-CURRENT H3 TAGS: ${fetchedPageData.h3.join(' | ') || 'None'}
-IMAGES: ${fetchedPageData.imgs.length} total, ${fetchedPageData.imgsNoAlt} missing alt text
-WORD COUNT: ${fetchedPageData.wordCount} words
-BODY PREVIEW: ${fetchedPageData.bodyText.slice(0, 1500)}
-═══════════════════════════════════════
-
-`;
-  }
-
-  const baseInstructions = fetchedPageData
-    ? `You are analyzing the ACTUAL live page above. Give SPECIFIC recommendations comparing what they HAVE vs what they SHOULD have. Quote exact current text and propose exact new text.`
-    : `Note: Page content was NOT fetched, so give general best-practice recommendations.`;
-
-  const prompt = aiMode === 'general'
-    ? `You are an expert SEO consultant for a business in Hyderabad, India.
-${pageContext}
-TARGET KEYWORD: "${currentAiKeyword}"
-${currentAiUrl ? `TARGET URL: ${currentAiUrl}` : ''}
-
-${baseInstructions}
-
-Provide:
-1. 📌 Title Tag Analysis (current vs optimized, with char count)
-2. 📝 Meta Description Analysis (current vs optimized, with char count)
-3. 🏷️ H1 Tag Analysis (current vs optimized)
-4. 💡 Content Recommendations (5 specific changes)
-5. 🔗 Internal Linking Suggestions
-6. 🔧 Technical SEO Issues found
-7. ✨ 5 Related Keywords to add
-
-Be SPECIFIC. Quote actual text from the page. Format clearly with markdown.`
-    : `You are a Local SEO expert for a business in Hyderabad, Telangana, India.
-${pageContext}
-TARGET KEYWORD: "${currentAiKeyword}"
-${currentAiUrl ? `TARGET URL: ${currentAiUrl}` : ''}
-
-${baseInstructions}
-
-Provide:
-1. 📍 GMB Business Description (750 chars, specific to their actual services)
-2. 📢 2 GMB Post Drafts (use their actual content themes)
-3. 🔑 10 Local Keywords with Hyderabad area modifiers (Gachibowli, Madhapur, Banjara Hills, Kukatpally, etc.)
-4. ⭐ Review Response Template (positive + negative)
-5. 🏗️ Local Business Schema Markup (JSON-LD with their actual business)
-6. 💼 Local Content Ideas (5 blog post titles)
-7. 📞 NAP Consistency check
-
-Be SPECIFIC to Hyderabad market. Use real area names.`;
+  const prompt = buildPrompt(currentAiKeyword, currentAiUrl, fetchedPageData, aiMode);
 
   try {
-    let res, data, modelName = '';
-
-    if (provider === 'groq') {
-      if (!aiKeys.groq) { output.textContent = '⚠️ Groq key not set'; return; }
-      modelName = 'Groq Llama 3.3 70B';
-      res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiKeys.groq}`},
-        body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],max_tokens:2500})
-      });
-      data = await res.json();
-      if (data.choices?.[0]?.message?.content) { output.textContent = data.choices[0].message.content; showAiMeta(modelName, startTime); return; }
-      throw new Error(data.error?.message || 'Groq failed');
+    const result = await callAI(provider, prompt, aiKeys);
+    if (result.text) {
+      output.textContent = result.text;
+      showAiMeta(result.model, startTime);
+    } else {
+      throw new Error('No response');
     }
-
-    if (provider === 'cerebras') {
-      if (!aiKeys.cerebras) { output.textContent = '⚠️ Cerebras key not set'; return; }
-      modelName = 'Cerebras GPT-OSS 120B';
-      res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiKeys.cerebras}`},
-        body:JSON.stringify({model:'gpt-oss-120b',messages:[{role:'user',content:prompt}],max_tokens:2500})
-      });
-      data = await res.json();
-      if (data.choices?.[0]?.message?.content) { output.textContent = data.choices[0].message.content; showAiMeta(modelName, startTime); return; }
-      throw new Error(data.error?.message || data.message || 'Cerebras failed');
-    }
-
-    if (provider === 'gemini') {
-      if (!aiKeys.gemini) { output.textContent = '⚠️ Gemini key not set'; return; }
-      modelName = 'Gemini 2.0 Flash';
-      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${aiKeys.gemini}`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:2500}})
-      });
-      data = await res.json();
-      if (data.candidates?.[0]?.content?.parts?.[0]?.text) { output.textContent = data.candidates[0].content.parts[0].text; showAiMeta(modelName, startTime); return; }
-      throw new Error(data.error?.message || 'Gemini failed');
-    }
-
-    if (provider === 'openrouter') {
-      if (!aiKeys.openrouter) { output.textContent = '⚠️ OpenRouter key not set'; return; }
-      modelName = 'OpenRouter';
-      res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiKeys.openrouter}`},
-        body:JSON.stringify({model:'meta-llama/llama-3.2-3b-instruct:free',messages:[{role:'user',content:prompt}],max_tokens:2000})
-      });
-      data = await res.json();
-      if (data.choices?.[0]?.message?.content) { output.textContent = data.choices[0].message.content; showAiMeta(modelName, startTime); return; }
-      throw new Error(data.error?.message || 'OpenRouter failed');
-    }
-
-    if (provider === 'openai') {
-      if (!aiKeys.openai) { output.textContent = '⚠️ OpenAI key not set'; return; }
-      modelName = 'OpenAI GPT-3.5';
-      res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiKeys.openai}`},
-        body:JSON.stringify({model:'gpt-3.5-turbo',messages:[{role:'user',content:prompt}],max_tokens:2000})
-      });
-      data = await res.json();
-      if (data.choices?.[0]?.message?.content) { output.textContent = data.choices[0].message.content; showAiMeta(modelName, startTime); return; }
-      throw new Error(data.error?.message || 'OpenAI failed');
-    }
-
-    if (provider === 'claude') {
-      if (!aiKeys.claude) { output.textContent = '⚠️ Claude key not set'; return; }
-      modelName = 'Claude 3 Haiku';
-      res = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':aiKeys.claude,'anthropic-version':'2023-06-01'},
-        body:JSON.stringify({model:'claude-3-haiku-20240307',max_tokens:2000,messages:[{role:'user',content:prompt}]})
-      });
-      data = await res.json();
-      if (data.content?.[0]?.text) { output.textContent = data.content[0].text; showAiMeta(modelName, startTime); return; }
-      throw new Error(data.error?.message || 'Claude failed');
-    }
-
-    if (provider === 'mistral') {
-      if (!aiKeys.mistral) { output.textContent = '⚠️ Mistral key not set'; return; }
-      modelName = 'Mistral Small';
-      res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiKeys.mistral}`},
-        body:JSON.stringify({model:'mistral-small-latest',messages:[{role:'user',content:prompt}],max_tokens:2000})
-      });
-      data = await res.json();
-      if (data.choices?.[0]?.message?.content) { output.textContent = data.choices[0].message.content; showAiMeta(modelName, startTime); return; }
-      throw new Error(data.error?.message || 'Mistral failed');
-    }
-
   } catch (e) {
-    console.log('AI Error:', e);
-    output.textContent = '❌ Error: ' + e.message + '\n\nTry a different model.';
+    output.textContent = '❌ Error: ' + e.message;
   }
 }
 
+function buildPrompt(keyword, url, pageData, mode) {
+  let pageContext = '';
+  if (pageData) {
+    pageContext = `\n═══════════════════\n📄 ACTUAL PAGE CONTENT FROM ${pageData.url}\n═══════════════════\nCURRENT TITLE (${pageData.titleLen} chars): ${pageData.title || 'MISSING'}\nCURRENT META DESC (${pageData.metaDescLen} chars): ${pageData.metaDesc || 'MISSING'}\nCURRENT H1: ${pageData.h1.join(' | ') || 'MISSING'}\nCURRENT H2: ${pageData.h2.join(' | ') || 'None'}\nIMAGES: ${pageData.imgs.length} total, ${pageData.imgsNoAlt} missing alt\nWORD COUNT: ${pageData.wordCount}\nBODY: ${pageData.bodyText.slice(0, 1500)}\n═══════════════════\n`;
+  }
+  const baseInstructions = pageData ? `Analyze the ACTUAL page above. Quote exact current text and propose exact new text.` : `Page content not fetched. Give general best-practice advice.`;
+  return mode === 'general'
+    ? `You are an expert SEO consultant for a business in Hyderabad, India.${pageContext}\nTARGET KEYWORD: "${keyword}"\n${url ? `TARGET URL: ${url}` : ''}\n\n${baseInstructions}\n\nProvide:\n1. 📌 Title Tag Analysis (current vs optimized with char count)\n2. 📝 Meta Description Analysis\n3. 🏷️ H1 Tag Analysis\n4. 💡 5 Content Recommendations\n5. 🔧 Technical SEO Issues\n6. ✨ 5 Related Keywords\n7. 📊 SEO SCORE: Give a score out of 100 at the END in this EXACT format: "SEO_SCORE: 75/100"\n8. 🚨 CRITICAL_ISSUES: List 3 critical issues in this EXACT format: "CRITICAL_ISSUES: 2"\n\nBe SPECIFIC. Format clearly.`
+    : `You are a Local SEO expert for Hyderabad, India.${pageContext}\nTARGET KEYWORD: "${keyword}"\n${url ? `TARGET URL: ${url}` : ''}\n\n${baseInstructions}\n\nProvide:\n1. 📍 GMB Business Description (750 chars)\n2. 📢 2 GMB Post Drafts\n3. 🔑 10 Local Keywords with Hyderabad areas (Gachibowli, Madhapur, Banjara Hills, Kukatpally)\n4. ⭐ Review Response Template\n5. 🏗️ Local Business Schema (JSON-LD)\n6. 💼 5 Local Content Ideas\n7. 📊 SEO SCORE: "SEO_SCORE: 75/100"\n8. 🚨 CRITICAL_ISSUES: "CRITICAL_ISSUES: 2"\n\nBe SPECIFIC to Hyderabad.`;
+}
+
+async function callAI(provider, prompt, aiKeys) {
+  let res, data;
+  if (provider === 'groq' && aiKeys.groq) {
+    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiKeys.groq}`},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],max_tokens:2500})
+    });
+    data = await res.json();
+    if (data.choices?.[0]?.message?.content) return {text: data.choices[0].message.content, model: 'Groq Llama 3.3 70B'};
+    throw new Error(data.error?.message || 'Groq failed');
+  }
+  if (provider === 'cerebras' && aiKeys.cerebras) {
+    res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiKeys.cerebras}`},
+      body:JSON.stringify({model:'gpt-oss-120b',messages:[{role:'user',content:prompt}],max_tokens:2500})
+    });
+    data = await res.json();
+    if (data.choices?.[0]?.message?.content) return {text: data.choices[0].message.content, model: 'Cerebras GPT-OSS 120B'};
+    throw new Error(data.error?.message || 'Cerebras failed');
+  }
+  if (provider === 'gemini' && aiKeys.gemini) {
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${aiKeys.gemini}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:2500}})
+    });
+    data = await res.json();
+    if (data.candidates?.[0]?.content?.parts?.[0]?.text) return {text: data.candidates[0].content.parts[0].text, model: 'Gemini 2.0 Flash'};
+    throw new Error(data.error?.message || 'Gemini failed');
+  }
+  throw new Error('Provider ' + provider + ' not configured');
+}
+
 function showAiMeta(modelName, startTime) {
-  const meta = document.getElementById('aiMeta');
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
   document.getElementById('aiUsedModel').textContent = '🤖 ' + modelName;
   document.getElementById('aiResponseTime').textContent = '⏱️ ' + elapsed + 's';
   const pageStatus = document.getElementById('aiPageStatus');
-  if (fetchedPageData) {
-    pageStatus.textContent = '📄 Live page analyzed';
-    pageStatus.style.display = 'inline-flex';
-  } else {
-    pageStatus.style.display = 'none';
+  if (fetchedPageData) { pageStatus.textContent = '📄 Live page analyzed'; pageStatus.style.display = 'inline-flex'; }
+  else { pageStatus.style.display = 'none'; }
+  document.getElementById('aiMeta').style.display = 'flex';
+}
+
+// ===== BULK AUDIT =====
+async function startBulkAudit() {
+  if (auditInProgress) return showToast('Audit already running', true);
+  if (!keywords.length) return showToast('Add some keywords first', true);
+
+  let aiKeys = {};
+  try {
+    const snap = await db.collection('users').doc(currentUser.uid).collection('config').doc('ai_keys').get();
+    if (snap.exists) aiKeys = snap.data();
+  } catch (e) {}
+
+  if (!aiKeys.groq && !aiKeys.cerebras && !aiKeys.gemini) {
+    return showToast('Add at least one AI key in Settings (Groq recommended)', true);
   }
-  meta.style.display = 'flex';
+
+  const provider = aiKeys.groq ? 'groq' : aiKeys.cerebras ? 'cerebras' : 'gemini';
+
+  if (!confirm(`Audit ${keywords.length} keywords using ${provider.toUpperCase()}?\n\nThis will:\n• Fetch each page\n• Run AI analysis\n• Generate SEO scores\n• Take ~${Math.ceil(keywords.length * 5)} seconds`)) return;
+
+  auditInProgress = true;
+  auditResults = [];
+  document.getElementById('bulkAuditBtn').disabled = true;
+  document.getElementById('bulkAuditBtn').textContent = '⏳ Auditing...';
+  document.getElementById('auditProgress').classList.add('show');
+  document.getElementById('auditResults').classList.remove('show');
+  document.getElementById('progressFill').style.width = '0%';
+
+  const total = keywords.length;
+  for (let i = 0; i < total; i++) {
+    const kw = keywords[i];
+    document.getElementById('auditStats').textContent = `${i+1} / ${total}`;
+    document.getElementById('progressCurrent').textContent = `Analyzing: ${kw.keyword}`;
+    document.getElementById('progressFill').style.width = `${((i+1)/total)*100}%`;
+
+    let pageData = null;
+    if (kw.url) {
+      pageData = await fetchAndParsePage(kw.url);
+    }
+
+    const prompt = buildPrompt(kw.keyword, kw.url, pageData, 'general');
+    try {
+      const result = await callAI(provider, prompt, aiKeys);
+      const scoreMatch = result.text.match(/SEO_SCORE:\s*(\d+)/i);
+      const criticalMatch = result.text.match(/CRITICAL_ISSUES:\s*(\d+)/i);
+      const score = scoreMatch ? parseInt(scoreMatch[1]) : 50;
+      const critical = criticalMatch ? parseInt(criticalMatch[1]) : 0;
+      auditResults.push({
+        keyword: kw.keyword,
+        url: kw.url || '',
+        score: score,
+        critical: critical,
+        pageFetched: !!pageData,
+        analysis: result.text,
+        model: result.model
+      });
+    } catch (e) {
+      auditResults.push({
+        keyword: kw.keyword,
+        url: kw.url || '',
+        score: 0,
+        critical: 0,
+        pageFetched: false,
+        analysis: 'Error: ' + e.message,
+        model: provider
+      });
+    }
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  auditInProgress = false;
+  document.getElementById('bulkAuditBtn').disabled = false;
+  document.getElementById('bulkAuditBtn').innerHTML = '⚡ Bulk AI Audit (All Keywords)';
+  document.getElementById('auditProgress').classList.remove('show');
+  renderAuditResults();
+}
+
+function renderAuditResults() {
+  document.getElementById('auditResults').classList.add('show');
+  auditResults.sort((a,b) => a.score - b.score);
+
+  const avgScore = Math.round(auditResults.reduce((s,r) => s+r.score, 0) / auditResults.length);
+  const totalCritical = auditResults.reduce((s,r) => s+r.critical, 0);
+  const excellent = auditResults.filter(r => r.score >= 80).length;
+  const poor = auditResults.filter(r => r.score < 50).length;
+
+  document.getElementById('auditSummary').innerHTML = `
+    <div class="summary-card"><div class="summary-card-value" style="color:${avgScore>=70?'#0a5c36':avgScore>=50?'#f39c12':'#e74c3c'}">${avgScore}</div><div class="summary-card-label">Avg SEO Score</div></div>
+    <div class="summary-card"><div class="summary-card-value">${auditResults.length}</div><div class="summary-card-label">Pages Audited</div></div>
+    <div class="summary-card"><div class="summary-card-value" style="color:#2ecc71">${excellent}</div><div class="summary-card-label">Excellent (80+)</div></div>
+    <div class="summary-card"><div class="summary-card-value" style="color:#e74c3c">${poor}</div><div class="summary-card-label">Needs Fix (<50)</div></div>
+    <div class="summary-card"><div class="summary-card-value" style="color:#c0392b">${totalCritical}</div><div class="summary-card-label">Critical Issues</div></div>
+  `;
+
+  document.getElementById('auditItems').innerHTML = auditResults.map((r, idx) => {
+    const scoreClass = r.score >= 80 ? 'score-excellent' : r.score >= 65 ? 'score-good' : r.score >= 50 ? 'score-fair' : 'score-poor';
+    const badges = [];
+    if (r.critical > 0) badges.push(`<span class="audit-issue-badge issue-critical">${r.critical} Critical</span>`);
+    if (!r.pageFetched) badges.push(`<span class="audit-issue-badge issue-warning">No URL/Fetch Failed</span>`);
+    if (r.score >= 80) badges.push(`<span class="audit-issue-badge issue-info">✅ Healthy</span>`);
+    return `
+      <div class="audit-item">
+        <div class="audit-item-header" onclick="toggleAuditDetail(${idx})">
+          <div class="audit-item-keyword"><span class="toggle-icon" id="toggle-${idx}">▶</span> ${r.keyword}</div>
+          <div class="audit-score ${scoreClass}">${r.score}</div>
+        </div>
+        <div class="audit-issues">${badges.join('')}</div>
+        <div class="audit-details" id="detail-${idx}"><pre>${escapeHtml(r.analysis)}</pre></div>
+      </div>`;
+  }).join('');
+  document.getElementById('auditResults').scrollIntoView({behavior:'smooth'});
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function toggleAuditDetail(idx) {
+  const detail = document.getElementById('detail-'+idx);
+  const toggle = document.getElementById('toggle-'+idx);
+  detail.classList.toggle('open');
+  toggle.classList.toggle('open');
+  toggle.textContent = detail.classList.contains('open') ? '▼' : '▶';
+}
+
+function closeAuditResults() {
+  document.getElementById('auditResults').classList.remove('show');
+}
+
+function exportAuditPDF() {
+  if (!auditResults.length) return showToast('No audit data', true);
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    let y = 20;
+    pdf.setFontSize(18);
+    pdf.setTextColor(10, 92, 54);
+    pdf.text('QuickRank — SEO Audit Report', 20, y);
+    y += 8;
+    pdf.setFontSize(10);
+    pdf.setTextColor(100);
+    pdf.text(`Company: ${currentCompanyName}`, 20, y); y += 5;
+    pdf.text(`Generated: ${new Date().toLocaleString()}`, 20, y); y += 5;
+    pdf.text(`Keywords Audited: ${auditResults.length}`, 20, y); y += 10;
+
+    const avgScore = Math.round(auditResults.reduce((s,r) => s+r.score, 0) / auditResults.length);
+    pdf.setFontSize(14);
+    pdf.setTextColor(10, 92, 54);
+    pdf.text(`Average SEO Score: ${avgScore}/100`, 20, y); y += 10;
+
+    auditResults.forEach((r, i) => {
+      if (y > 250) { pdf.addPage(); y = 20; }
+      pdf.setFontSize(12);
+      pdf.setTextColor(10, 92, 54);
+      pdf.text(`${i+1}. ${r.keyword}`, 20, y); y += 6;
+      pdf.setFontSize(10);
+      pdf.setTextColor(0);
+      pdf.text(`Score: ${r.score}/100 | Critical Issues: ${r.critical} | URL: ${r.url || 'None'}`, 20, y); y += 6;
+      const lines = pdf.splitTextToSize(r.analysis.slice(0, 1500), 170);
+      pdf.setFontSize(8);
+      pdf.setTextColor(60);
+      lines.forEach(line => {
+        if (y > 280) { pdf.addPage(); y = 20; }
+        pdf.text(line, 20, y);
+        y += 4;
+      });
+      y += 8;
+    });
+    pdf.save(`QuickRank-Audit-${currentCompanyName}-${Date.now()}.pdf`);
+    showToast('PDF exported ✅');
+  } catch(e) {
+    showToast('PDF Error: '+e.message, true);
+  }
 }
 
 function showPage(page, el){
