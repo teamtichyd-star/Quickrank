@@ -57,17 +57,6 @@
 .logout-btn:hover{border-color:#e74c3c;color:#e74c3c;}
 .sidebar{position:fixed;top:var(--topbar-height);left:0;width:var(--sidebar-width);height:calc(100vh - var(--topbar-height));background:#fff;border-right:1px solid #d4f5e2;overflow-y:auto;z-index:900;transition:transform 0.3s;padding:16px 0;}
 .sidebar-section{padding:6px 16px;font-size:10px;font-weight:700;color:#999;letter-spacing:1.2px;text-transform:uppercase;margin-top:8px;}
-.nav-parent{display:flex;align-items:center;padding:10px 16px;cursor:pointer;color:#ccc;font-size:13px;font-weight:600;border-radius:8px;margin:2px 8px;transition:background 0.2s;gap:10px;user-select:none;}
-.nav-parent:hover{background:rgba(255,255,255,0.08);color:#fff;}
-.nav-parent.open{color:#2ecc71;}
-.nav-parent svg:first-child{width:18px;height:18px;fill:#999;flex-shrink:0;}
-.nav-parent.open svg:first-child{fill:#2ecc71;}
-.nav-arrow{fill:#999;flex-shrink:0;}
-.nav-parent.open .nav-arrow{transform:rotate(180deg);fill:#2ecc71;}
-.nav-children{overflow:hidden;max-height:0;transition:max-height 0.25s ease;}
-.nav-children.open{max-height:200px;}
-.nav-child{padding-left:36px !important;font-size:12.5px;}
-.nav-child svg{width:15px !important;height:15px !important;}
 .nav-item{display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;transition:all 0.2s;border-left:3px solid transparent;font-size:14px;color:#444;font-weight:500;}
 .nav-item:hover{background:#f0fdf6;color:#0a5c36;border-left-color:#d4f5e2;}
 .nav-item.active{background:#d4f5e2;color:#0a5c36;font-weight:700;border-left-color:#2ecc71;}
@@ -354,22 +343,9 @@ tr:hover td{background:#f9fffe;}
   <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-section">Main</div>
-
-    <!-- Rank Tracker collapsible parent -->
-    <div class="nav-parent" id="nav-parent-ranktracker" onclick="toggleNavParent('ranktracker')">
-      <svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>
-      <span>Rank Tracker</span>
-      <svg class="nav-arrow" id="nav-arrow-ranktracker" viewBox="0 0 24 24" style="width:14px;height:14px;margin-left:auto;transition:transform 0.2s;"><path d="M7 10l5 5 5-5z"/></svg>
+    <div class="nav-item active" id="nav-ranktracker" onclick="showPage('ranktracker',this)">
+      <svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>Rank Tracker
     </div>
-    <div class="nav-children" id="nav-children-ranktracker">
-      <div class="nav-item nav-child active" id="nav-ranktracker" onclick="showPage('ranktracker',this);event.stopPropagation()">
-        <svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>Websites
-      </div>
-      <div class="nav-item nav-child" id="nav-local" onclick="showPage('local',this);event.stopPropagation()">
-        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>Locations
-      </div>
-    </div>
-
     <div class="nav-item" id="nav-gsc" onclick="showPage('gsc',this)">
       <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>Search Console
       <span class="nav-badge orange" id="gscNavBadge">NEW</span>
@@ -377,7 +353,6 @@ tr:hover td{background:#f9fffe;}
     <div class="nav-item" id="nav-charts" onclick="showPage('charts',this)">
       <svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>Rank History
     </div>
-
     <div class="sidebar-section">Tools</div>
     <div class="nav-item" id="nav-ai" onclick="showPage('ai',this)">
       <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18a1 1 0 0 0-2 0v1.93A8 8 0 0 1 4.07 13H6a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V6a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H18a1 1 0 0 0 0 2h1.93A8 8 0 0 1 13 19.93z"/></svg>AI Optimize
@@ -385,7 +360,9 @@ tr:hover td{background:#f9fffe;}
     <div class="nav-item" id="nav-audit" onclick="showPage('audit',this)">
       <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>Bulk AI Audit
     </div>
-
+    <div class="nav-item" id="nav-local" onclick="showPage('local',this)">
+      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>Local GMB
+    </div>
     <div class="sidebar-section">Account</div>
     <div class="nav-item" id="nav-settings" onclick="showPage('settings',this)">
       <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>Settings
@@ -1844,32 +1821,6 @@ async function runAI(){
   try{const keys=await loadAIKeys();const r=await callAI(provider,buildPrompt(currentAiKeyword,currentAiUrl,fetchedPageData,aiMode),keys);out.textContent=r.text;meta.textContent=`Model: ${r.model} · Provider: ${provider}`;meta.style.display='block';}
   catch(e){out.textContent='❌ Error: '+e.message;}
 }
-function toggleNavParent(key){
-  const parent = document.getElementById('nav-parent-' + key);
-  const children = document.getElementById('nav-children-' + key);
-  if(!parent || !children) return;
-  const isOpen = children.classList.contains('open');
-  if(isOpen){
-    children.classList.remove('open');
-    parent.classList.remove('open');
-  } else {
-    children.classList.add('open');
-    parent.classList.add('open');
-  }
-}
-
-// Auto-open parent if child page is active
-function openParentIfChild(pageId){
-  const childToParent = { ranktracker: 'ranktracker', local: 'ranktracker' };
-  const parentKey = childToParent[pageId];
-  if(parentKey){
-    const children = document.getElementById('nav-children-' + parentKey);
-    const parent = document.getElementById('nav-parent-' + parentKey);
-    if(children) children.classList.add('open');
-    if(parent) parent.classList.add('open');
-  }
-}
-
 async function runStandaloneAI(){const kw=document.getElementById('standalone-keyword').value.trim();const url=document.getElementById('standalone-url').value.trim();if(!kw)return showToast('Enter a keyword',true);openAiPanel(kw,url);showPage('ranktracker',document.getElementById('nav-ranktracker'));}
 const providerModels={groq:['llama-3.3-70b-versatile','llama-3.1-8b-instant','mixtral-8x7b-32768','gemma2-9b-it'],openai:['gpt-4o-mini','gpt-4o','gpt-3.5-turbo'],anthropic:['claude-3-haiku-20240307','claude-3-5-sonnet-20241022'],gemini:['gemini-1.5-flash','gemini-1.5-pro'],mistral:['mistral-large-latest','mistral-small-latest'],cohere:['command-r','command-r-plus','command'],together:['meta-llama/Llama-3.3-70B-Instruct-Turbo','mistralai/Mixtral-8x7B-Instruct-v0.1']};
 document.getElementById('aiProviderSelect').addEventListener('change',function(){document.getElementById('aiModelSelect').innerHTML=providerModels[this.value].map(m=>`<option value="${m}">${m}</option>`).join('');});
