@@ -819,6 +819,22 @@ tr:hover td{background:#f9fffe;}
         <div class="form-group"><label>GMB Name</label><input type="text" id="s-gmbName"></div>
         <div class="form-group"><label>GMB Address</label><input type="text" id="s-gmbAddress"></div>
         <div class="form-group">
+          <label>GMB Place ID <span style="color:#888;font-weight:400;font-size:12px;">(one-time setup for 100% accuracy)</span></label>
+          <input type="text" id="s-gmbPlaceId" placeholder="e.g. 0x3bcb90dbf89af2c5:0xdc8d463088d38d66">
+          <small style="color:#666;display:block;margin-top:4px;font-size:11px;">
+            Get from Google Maps embed code → look for <code>!1s0x...</code><br>
+            Or from URL after searching your business → <code>!3m1!4b1!4m6!3m5!1s[YOUR_ID]</code>
+          </small>
+        </div>
+        <div class="form-group">
+          <label>GMB Latitude</label>
+          <input type="text" id="s-gmbLat" placeholder="e.g. 17.4506074">
+        </div>
+        <div class="form-group">
+          <label>GMB Longitude</label>
+          <input type="text" id="s-gmbLng" placeholder="e.g. 78.3624082">
+        </div>
+        <div class="form-group">
           <label style="font-weight:600;color:#0a5c36;">Google Places API Key</label>
           <input type="password" id="s-googlePlacesKey" placeholder="Paste your Google Places API Key here"
             style="width:100%;padding:10px 14px;border:1.5px solid #d4f5e2;border-radius:8px;font-size:13px;">
@@ -1789,12 +1805,19 @@ async function loadCompanySettings(){
   if(!currentUser||!currentCompanyId)return;
   try{const doc=await db.collection('users').doc(currentUser.uid).collection('companies').doc(currentCompanyId).get();
     if(doc.exists){const d=doc.data();document.getElementById('s-companyName').value=d.name||'';document.getElementById('s-website').value=d.website||'';document.getElementById('s-gscProperty').value=d.gscProperty||'';document.getElementById('s-gmbName').value=d.gmbName||'';document.getElementById('s-gmbAddress').value=d.gmbAddress||'';
-      document.getElementById('s-googlePlacesKey').value=d.googlePlacesKey||'';}
+      document.getElementById('s-googlePlacesKey').value=d.googlePlacesKey||'';
+      document.getElementById('s-gmbPlaceId').value=d.gmbPlaceId||'0x3bcb90dbf89af2c5:0xdc8d463088d38d66';
+      document.getElementById('s-gmbLat').value=d.gmbLat||'17.4506074';
+      document.getElementById('s-gmbLng').value=d.gmbLng||'78.3624082';}
   }catch(e){}
 }
 async function saveCompanySettings(){
   const data={name:document.getElementById('s-companyName').value.trim(),website:document.getElementById('s-website').value.trim(),gscProperty:document.getElementById('s-gscProperty').value.trim(),gmbName:document.getElementById('s-gmbName').value.trim(),gmbAddress:document.getElementById('s-gmbAddress').value.trim(),
-      googlePlacesKey:document.getElementById('s-googlePlacesKey').value.trim(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+      googlePlacesKey:document.getElementById('s-googlePlacesKey').value.trim(),
+      gmbPlaceId:document.getElementById('s-gmbPlaceId').value.trim(),
+      gmbLat:document.getElementById('s-gmbLat').value.trim(),
+      gmbLng:document.getElementById('s-gmbLng').value.trim(),
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(!data.name)return showToast('Enter company name',true);
   try{
     await db.collection('users').doc(currentUser.uid).collection('companies').doc(currentCompanyId).update(data);
@@ -1903,8 +1926,8 @@ function showToast(msg,isError=false){
 
 // Grid center points
 const GMB_ZONES = {
-  gachibowli: { lat: 17.4401, lng: 78.3489, label: 'Gachibowli', radius: 3 },
-  hyderabad:  { lat: 17.3850, lng: 78.4867, label: 'Hyderabad',  radius: 12 }
+  gachibowli: { lat: 17.4506074, lng: 78.3624082, label: 'Gachibowli (TIC area)', radius: 3 },
+  hyderabad:  { lat: 17.3850, lng: 78.4867, label: 'Hyderabad', radius: 12 }
 };
 
 // Switch GMB Tabs
@@ -1955,19 +1978,46 @@ async function checkLocalRank() {
 
 async function fetchNearbyPlaces(keyword, lat, lng, apiKey) {
   if (!apiKey) throw new Error('Google Places API key not found in Settings.');
-  const proxies = [
-    'https://corsproxy.io/?',
-    'https://api.allorigins.win/raw?url='
-  ];
-  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(keyword)}&location=${lat},${lng}&radius=15000&key=${apiKey}`;
-  for (const proxy of proxies) {
-    try {
-      const res  = await fetch(proxy + encodeURIComponent(url));
-      const data = await res.json();
-      if (data.results) return data.results;
-    } catch(e) { continue; }
+  const proxies = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
+
+  // Helper: single fetch attempt with proxy fallback
+  async function fetchUrl(url) {
+    for (const proxy of proxies) {
+      try {
+        const res = await fetch(proxy + encodeURIComponent(url));
+        const data = await res.json();
+        if (data.results || data.next_page_token) return data;
+      } catch(e) { continue; }
+    }
+    return null;
   }
-  throw new Error('Could not reach Google Places API. Check your API key and billing.');
+
+  let all = [];
+  let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(keyword)}&location=${lat},${lng}&radius=15000&key=${apiKey}`;
+
+  // Page 1
+  let data = await fetchUrl(url);
+  if (!data || !data.results) throw new Error('Could not reach Google Places API. Check API key & billing.');
+  all = all.concat(data.results);
+
+  // Page 2 (if token exists) - Google requires 2s delay
+  if (data.next_page_token) {
+    await new Promise(r => setTimeout(r, 2100));
+    const url2 = `https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken=${data.next_page_token}&key=${apiKey}`;
+    const data2 = await fetchUrl(url2);
+    if (data2 && data2.results) {
+      all = all.concat(data2.results);
+      // Page 3
+      if (data2.next_page_token) {
+        await new Promise(r => setTimeout(r, 2100));
+        const url3 = `https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken=${data2.next_page_token}&key=${apiKey}`;
+        const data3 = await fetchUrl(url3);
+        if (data3 && data3.results) all = all.concat(data3.results);
+      }
+    }
+  }
+
+  return all;
 }
 
 function renderRankResult(results, gmbName, keyword, scope) {
@@ -2625,31 +2675,50 @@ function getCurrentCompanyId() {
   return 'default';
 }
 
-// Smart business matcher (Phase 11.6 - dynamic, no hardcoded names)
+// Smart business matcher (Phase 11.6.1 - place_id + fuzzy + tokens)
 function findMyBusiness(results, gmbName, company) {
   if (!results || results.length === 0) return -1;
   const name = (gmbName || '').toLowerCase().trim();
   const website = (company.website || '').toLowerCase()
     .replace(/https?:\/\//,'').replace(/\/$/,'').replace('www.','');
+  const placeId = (company.gmbPlaceId || '').toLowerCase().trim();
+  const myLat = parseFloat(company.gmbLat) || 0;
+  const myLng = parseFloat(company.gmbLng) || 0;
 
-  // Build name tokens (words of 4+ chars) from GMB name
+  // PRIORITY 1: place_id exact match (100% accurate)
+  if (placeId) {
+    for (let i = 0; i < results.length; i++) {
+      const rPid = (results[i].place_id || '').toLowerCase();
+      const rRef = (results[i].reference || '').toLowerCase();
+      if (rPid && placeId.includes(rPid)) return i;
+      if (rRef && placeId.includes(rRef)) return i;
+    }
+  }
+
+  // PRIORITY 2: GPS proximity match (within 100m = same business)
+  if (myLat && myLng) {
+    for (let i = 0; i < results.length; i++) {
+      const loc = results[i].geometry && results[i].geometry.location;
+      if (loc) {
+        const dLat = Math.abs(loc.lat - myLat);
+        const dLng = Math.abs(loc.lng - myLng);
+        if (dLat < 0.001 && dLng < 0.001) return i; // ~100m radius
+      }
+    }
+  }
+
+  // PRIORITY 3: Build name tokens (4+ chars) from GMB name
   const tokens = name.split(/[\s(),-]+/).filter(t => t.length >= 4);
 
   for (let i = 0; i < results.length; i++) {
     const rName = (results[i].name || '').toLowerCase();
     const rWebsite = (results[i].website || '').toLowerCase();
 
-    // 1. Exact match
     if (rName === name) return i;
-
-    // 2. Website match
     if (website && rWebsite && rWebsite.includes(website)) return i;
 
-    // 3. Token match - if 2+ tokens match, it's likely our business
     const matchCount = tokens.filter(t => rName.includes(t)).length;
     if (matchCount >= 2) return i;
-
-    // 4. Single strong token match (unique business words)
     if (tokens.length === 1 && matchCount === 1) return i;
   }
   return -1;
