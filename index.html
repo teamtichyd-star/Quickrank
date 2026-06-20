@@ -1930,8 +1930,7 @@ function formatAIOutput(text){
   var html = '';
 
   // Split by numbered sections like "1)" or "**Section**"
-  var lines = cleaned.split('
-');
+  var lines = cleaned.split('\n');
   var currentSection = '';
   var items = [];
 
