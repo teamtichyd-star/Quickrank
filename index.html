@@ -1909,7 +1909,7 @@ async function fetchPageContent(){
   if(!url||!url.startsWith('http')){status.textContent='⚠️ Enter valid URL';status.className='fetch-status error';return;}
   status.textContent='⏳ Fetching...';status.className='fetch-status';preview.classList.remove('open');fetchedPageData=null;
   const data=await fetchAndParsePage(url);
-  if(data){
+  if(data && data.title){
     fetchedPageData=data;
     preview.innerHTML=`
       <div class="preview-item"><div class="preview-label">📌 Title (${data.titleLen} chars)</div><div class="preview-value">${data.title||'<span class="preview-empty">Missing</span>'}</div></div>
@@ -1917,7 +1917,7 @@ async function fetchPageContent(){
       <div class="preview-item"><div class="preview-label">H1 (${data.h1.length})</div><div class="preview-value">${data.h1.join(' | ')||'<span class="preview-empty">None</span>'}</div></div>
       <div class="preview-item"><div class="preview-label">Images</div><div class="preview-value">${data.images} total · ${data.imgsNoAlt} missing alt</div></div>`;
     preview.classList.add('open');status.textContent='✅ Fetched!';status.className='fetch-status success';
-  }else{status.textContent='❌ Could not fetch. AI still works without it.';status.className='fetch-status error';}
+  }else{status.textContent='⚠️ Page blocked CORS (common). AI will use GSC data instead — click Run AI.';status.className='fetch-status error';}
 }
 async function loadAIKeys(){if(!currentUser)return{};try{const d=await db.collection('users').doc(currentUser.uid).collection('settings').doc('aikeys').get();return d.exists?d.data():{};}catch(e){return{};}}
 async function callAI(provider,prompt,keys){
