@@ -1847,7 +1847,13 @@ function buildLineChartConfig(labels,data,label,color,compact=false){
 /* ══════════════════════════════
    AI
 ══════════════════════════════ */
-const CORS_PROXIES=[url=>`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,url=>`https://corsproxy.io/?${encodeURIComponent(url)}`,url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`];
+const CORS_PROXIES=[
+  url=>`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url=>`https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url=>`https://thingproxy.freeboard.io/fetch/${url}`,
+  url=>`https://cors.eu.org/${url}`
+];
 async function fetchAndParsePage(url){
   for(const pf of CORS_PROXIES){
     try{
