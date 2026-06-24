@@ -3356,7 +3356,8 @@ function renderOptimizationScore(myData, top3, gmbName) {
 
 // ---- TAB 3: AI STRATEGY ----
 
-// ═══ ACTION PLAN SYSTEM ═══
+
+// ═══ SMART HYBRID ACTION PLAN ═══
 async function loadActionPlan() {
   if (!currentUser || !currentCompanyId) {
     alert('Please select a company first');
@@ -3374,163 +3375,273 @@ async function loadActionPlan() {
     const compDoc = await db.collection('users').doc(currentUser.uid)
       .collection('companies').doc(currentCompanyId).get();
     const comp = compDoc.data();
+    const bizName = comp.gmbName || comp.name || 'Your Business';
+    const city = (comp.gmbAddress || 'Hyderabad').split(',').pop().trim() || 'Hyderabad';
+    const placeId = comp.gmbPlaceId || '';
+    const googleReviewLink = placeId ? `https://search.google.com/local/writereview?placeid=${placeId}` : '';
     
-    // Get GMB data via Place Details API
-    let myData = { rating: 0, reviews: 0, photos: 0, phone: '', hasWebsite: false };
+    // Get GMB data
+    let myData = { rating: 0, reviews: 0, photos: 0 };
     if (comp.gmbPlaceId && comp.googlePlacesKey) {
       try {
-        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${comp.gmbPlaceId}&fields=rating,user_ratings_total,photos,formatted_phone_number,website&key=${comp.googlePlacesKey}`;
-        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-        const res = await fetch(proxyUrl);
+        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${comp.gmbPlaceId}&fields=rating,user_ratings_total,photos&key=${comp.googlePlacesKey}`;
+        const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
         const data = await res.json();
         if (data.result) {
           myData.rating = data.result.rating || 0;
           myData.reviews = data.result.user_ratings_total || 0;
           myData.photos = (data.result.photos || []).length;
-          myData.phone = data.result.formatted_phone_number || '';
-          myData.hasWebsite = !!data.result.website;
         }
       } catch(e) { console.warn('GMB fetch failed', e); }
     }
     
-    // Get tracked keywords data
+    // Get tracked keywords
     const kwSnap = await db.collection('users').doc(currentUser.uid)
       .collection('companies').doc(currentCompanyId)
       .collection('locationKeywords').get();
     const keywords = kwSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    
+    const topKeyword = keywords.find(k => k.currentRank && k.currentRank > 3) || keywords[0] || { keyword: 'interior contractors hyderabad' };
     const ranks = keywords.map(k => k.currentRank || 99).filter(r => r < 99);
     const avgRank = ranks.length ? Math.round(ranks.reduce((a,b) => a+b, 0) / ranks.length) : 99;
     const top3Count = ranks.filter(r => r <= 3).length;
-    const top10Count = ranks.filter(r => r <= 10).length;
     
-    // Build smart tasks based on REAL data
+    // Pre-written WhatsApp message
+    const waMsg = `Hi! Thank you for choosing ${bizName} for your interior project. We hope you loved the result! 🏠✨
+
+Would you mind sharing your experience with us on Google? It takes just 30 seconds and helps us serve more clients like you.
+
+${googleReviewLink || '[Add your Google review link]'}
+
+Many thanks! 🙏`;
+    
+    // Hyderabad-specific directories
+    const directories = [
+      { name: 'JustDial', url: 'https://www.justdial.com/Free-Listing', desc: 'Top platform for local services in India' },
+      { name: 'Sulekha', url: 'https://www.sulekha.com/business/getlisted', desc: 'Quality leads for interior services' },
+      { name: 'IndiaMart', url: 'https://seller.indiamart.com/', desc: 'B2B + B2C interior contractors' },
+      { name: 'UrbanCompany', url: 'https://partner.urbancompany.com/', desc: 'Premium home services platform' },
+      { name: 'Houzz', url: 'https://www.houzz.in/pro/signup', desc: 'Interior design specific platform' },
+      { name: 'NoBroker', url: 'https://www.nobroker.in/blr/services-vendor-signup.php', desc: 'Real estate connected services' },
+      { name: 'TradeIndia', url: 'https://my.tradeindia.com/Registration', desc: 'B2B directory' },
+      { name: 'Yellow Pages', url: 'https://www.yellowpages.in/free-listing', desc: 'Traditional + online listing' },
+      { name: 'GrabOn Business', url: 'https://www.grabon.in/contact/', desc: 'Discount platform' },
+      { name: 'AddressGuru', url: 'https://www.addressguru.in/', desc: 'Hyderabad-focused directory' }
+    ];
+    
+    // Hyderabad service areas
+    const serviceAreas = ['Gachibowli', 'HITEC City', 'Madhapur', 'Kondapur', 'Jubilee Hills', 'Banjara Hills', 'Kukatpally', 'Manikonda', 'Financial District', 'Nanakramguda'];
+    
+    // Build tasks
     const tasks = [];
     
-    // ═══ CRITICAL TASKS ═══
+    // ═══ CRITICAL ═══
     if (myData.reviews < 50) {
-      const needed = 50 - myData.reviews;
-      tasks.push({ tier: 'critical', id: 'reviews_50', 
-        title: `Get ${needed} more reviews (currently: ${myData.reviews})`, 
-        action: 'Send WhatsApp review requests to past 20 clients this week',
-        impact: '+5 ranks potential' });
+      tasks.push({
+        tier: 'critical', id: 'reviews_50',
+        title: `Get ${50 - myData.reviews} more Google reviews (you have ${myData.reviews})`,
+        action: `Send WhatsApp to your last 30 clients with this ready-to-use message:`,
+        copyText: waMsg,
+        link: googleReviewLink,
+        linkLabel: googleReviewLink ? '🔗 Your direct Google review link' : '',
+        impact: 'Reviews = #1 ranking factor'
+      });
     }
     
-    if (myData.rating > 0 && myData.rating < 4.5) {
-      tasks.push({ tier: 'critical', id: 'rating_45', 
-        title: `Improve rating from ${myData.rating} to 4.5+`, 
-        action: 'Reply to all negative reviews professionally, request happy clients to review',
-        impact: 'Major ranking factor' });
+    if (myData.photos < 30) {
+      tasks.push({
+        tier: 'critical', id: 'photos_30',
+        title: `Add ${30 - myData.photos} more photos (currently: ${myData.photos})`,
+        action: `Upload these specific photo types this week:
+1. Before/After of 3 recent projects
+2. Team at work (5 photos)
+3. Office/Showroom interior (5 photos)
+4. Material samples (5 photos)
+5. Completed villa/office spaces (12 photos)`,
+        link: 'https://business.google.com',
+        linkLabel: '🔗 Open Google Business Profile',
+        impact: 'Listings with 100+ photos get 520% more calls'
+      });
     }
     
-    if (myData.photos < 20) {
-      tasks.push({ tier: 'critical', id: 'photos_20', 
-        title: `Add ${20 - myData.photos} more photos (currently: ${myData.photos})`, 
-        action: 'Upload before/after project photos, team photos, office photos',
-        impact: '+10% profile views' });
+    tasks.push({
+      tier: 'critical', id: 'gmb_post_week',
+      title: `Post 3 GMB updates this week for "${topKeyword.keyword}"`,
+      action: `Click "Generate AI Post Titles" below to get 4 ready-to-use post titles for YOUR top keyword.`,
+      aiAction: 'gmb_posts',
+      aiKeyword: topKeyword.keyword,
+      impact: 'Weekly posts keep profile active = +ranks'
+    });
+    
+    if (myData.rating > 0 && myData.rating < 4.7) {
+      tasks.push({
+        tier: 'critical', id: 'reply_reviews',
+        title: `Reply to ALL existing reviews (current rating: ${myData.rating}⭐)`,
+        action: `Open your GMB dashboard. Reply to every review (positive AND negative) within 24 hours. Google rewards engagement.`,
+        link: 'https://business.google.com/reviews',
+        linkLabel: '🔗 Go to GMB Reviews',
+        impact: 'Reply rate boosts local ranking 8%'
+      });
     }
     
-    tasks.push({ tier: 'critical', id: 'post_weekly', 
-      title: 'Post 3 GMB updates this week', 
-      action: 'Share recent projects, offers, tips with target keywords',
-      impact: 'Keeps profile active' });
-    
-    // ═══ IMPORTANT TASKS ═══
+    // ═══ IMPORTANT ═══
     if (myData.reviews < 100) {
-      tasks.push({ tier: 'important', id: 'reviews_100', 
-        title: `Reach 100 reviews this month (currently: ${myData.reviews})`, 
-        action: 'Set up automated WhatsApp review request after project completion',
-        impact: 'Move from Page 2 to Page 1' });
+      tasks.push({
+        tier: 'important', id: 'reviews_100',
+        title: `Reach 100 reviews this month (need ${100 - myData.reviews} more)`,
+        action: `Setup: Train your team to send this WhatsApp after EVERY project handover. Goal: 3-5 new reviews per week.`,
+        copyText: waMsg,
+        impact: 'Cross 100 reviews = Page 1 territory'
+      });
     }
     
-    if (avgRank > 10 && avgRank < 99) {
-      tasks.push({ tier: 'important', id: 'rank_top10', 
-        title: `Get all keywords to Top 10 (current avg: #${avgRank})`, 
-        action: 'Run Rank Grid weekly, optimize GMB description with keywords',
-        impact: 'Visibility in local pack' });
+    tasks.push({
+      tier: 'important', id: 'qa_section',
+      title: 'Add 10 Questions & Answers to your GMB',
+      action: `Click "Generate AI Q&A" to get 10 ready-to-add questions specific to interior contractors in ${city}.`,
+      aiAction: 'qa',
+      impact: 'Q&A appears in Knowledge Panel = trust signal'
+    });
+    
+    tasks.push({
+      tier: 'important', id: 'directories_10',
+      title: `Get listed on these 10 Hyderabad directories`,
+      action: `Click each link below and complete free listing for "${bizName}". Use SAME NAP everywhere (Name, Address, Phone).`,
+      directoryList: directories,
+      impact: 'Citation consistency = +15 ranks possible'
+    });
+    
+    tasks.push({
+      tier: 'important', id: 'service_areas',
+      title: `Add these 10 service areas to GMB`,
+      action: `Go to GMB → Info → Service Area → Add ALL these locations:`,
+      areaList: serviceAreas,
+      link: 'https://business.google.com/locations',
+      linkLabel: '🔗 Open GMB Service Areas',
+      impact: 'Appear in 10 more zone searches'
+    });
+    
+    tasks.push({
+      tier: 'important', id: 'gmb_description',
+      title: 'Optimize GMB business description (750 chars)',
+      action: `Click "Generate AI Description" to create SEO-optimized description with all your top keywords.`,
+      aiAction: 'description',
+      impact: 'Description = primary keyword signal'
+    });
+    
+    // ═══ GROWTH ═══
+    if (myData.reviews < 500) {
+      tasks.push({
+        tier: 'growth', id: 'reviews_500',
+        title: `Reach 500 reviews (currently: ${myData.reviews})`,
+        action: `Long-term goal. Average needed: 2 reviews/day for 8 months. Automate using WhatsApp Business catalog + review link.`,
+        copyText: waMsg,
+        impact: 'Top 3 territory - competitors level'
+      });
     }
     
-    tasks.push({ tier: 'important', id: 'qa_section', 
-      title: 'Add 10 Questions & Answers to GMB', 
-      action: 'Anticipate FAQs: services, pricing, areas served, timeline',
-      impact: 'Helps Google understand business' });
+    tasks.push({
+      tier: 'growth', id: 'blog_12',
+      title: 'Publish 12 blog posts on website (1/week for 3 months)',
+      action: `Click "Generate Blog Topics" to get 12 SEO-friendly blog topics for "${city} interior contractors".`,
+      aiAction: 'blog_topics',
+      impact: 'Long-tail SEO + backlink magnet'
+    });
     
-    tasks.push({ tier: 'important', id: 'citations', 
-      title: 'Get listed on 10 local directories', 
-      action: 'JustDial, Sulekha, IndiaMart, Urban Company, etc',
-      impact: 'Builds authority' });
-    
-    tasks.push({ tier: 'important', id: 'service_areas', 
-      title: 'Add 5+ service areas to GMB', 
-      action: 'Gachibowli, Hitech City, Madhapur, Kondapur, Jubilee Hills',
-      impact: 'Appear in more zones' });
-    
-    // ═══ GROWTH TASKS ═══
-    tasks.push({ tier: 'growth', id: 'reviews_500', 
-      title: `Reach 500 reviews (currently: ${myData.reviews})`, 
-      action: 'Long-term: 1-2 reviews per day average',
-      impact: 'Top 3 territory' });
+    tasks.push({
+      tier: 'growth', id: 'backlinks_20',
+      title: 'Build 20 quality backlinks (1/week)',
+      action: `Strategies:
+• Guest posts on Hyderabad lifestyle blogs
+• Featured in Times of India real estate section
+• Partner with builders for cross-promotion
+• Submit case studies to design magazines
+• Get featured in YouTube interior channels`,
+      impact: 'Authority = sustainable rankings'
+    });
     
     if (top3Count < keywords.length) {
-      tasks.push({ tier: 'growth', id: 'top3_all', 
-        title: `Get all ${keywords.length} keywords to Top 3 (currently: ${top3Count}/${keywords.length})`, 
-        action: 'Combine reviews + citations + content strategy',
-        impact: 'Dominate local search' });
+      tasks.push({
+        tier: 'growth', id: 'top3_all',
+        title: `Get all ${keywords.length} keywords to Top 3 (current: ${top3Count}/${keywords.length})`,
+        action: `Run Rank Grid weekly. Track which zones improve. Focus content on weak zones.`,
+        impact: 'Total local domination'
+      });
     }
     
-    tasks.push({ tier: 'growth', id: 'blog_content', 
-      title: 'Publish 12 blog posts on website (1/week)', 
-      action: 'Topics: Interior design trends, project case studies, tips',
-      impact: 'SEO authority' });
-    
-    tasks.push({ tier: 'growth', id: 'backlinks', 
-      title: 'Build 20 quality backlinks', 
-      action: 'Guest posts, local newspapers, design forums',
-      impact: 'Long-term ranking power' });
-    
-    // Load completed tasks from Firebase
+    // Load completed tasks
     const apDoc = await db.collection('users').doc(currentUser.uid)
       .collection('companies').doc(currentCompanyId)
       .collection('actionPlan').doc('progress').get();
     const completed = apDoc.exists ? (apDoc.data().completed || {}) : {};
     
-    // Render tasks
-    const renderTaskList = (tier, containerId) => {
-      const tierTasks = tasks.filter(t => t.tier === tier);
-      const container = document.getElementById(containerId);
-      container.innerHTML = tierTasks.map(t => {
-        const isDone = completed[t.id] === true;
-        return `
-          <div style="display:flex;gap:12px;padding:12px;border-bottom:1px solid #f0f0f0;align-items:flex-start;${isDone ? 'opacity:0.5;background:#fafafa;' : ''}">
-            <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleActionTask('${t.id}', this.checked)" style="margin-top:3px;width:18px;height:18px;cursor:pointer;accent-color:#2ecc71;">
-            <div style="flex:1;">
-              <div style="font-weight:600;color:#0a5c36;font-size:14px;${isDone ? 'text-decoration:line-through;' : ''}">${t.title}</div>
-              <div style="font-size:12px;color:#666;margin-top:4px;">${t.action}</div>
-              <div style="font-size:11px;color:#2ecc71;margin-top:4px;font-weight:600;">📊 ${t.impact}</div>
-            </div>
+    // Render
+    const renderTask = (t) => {
+      const isDone = completed[t.id] === true;
+      let extra = '';
+      
+      if (t.copyText) {
+        const escaped = t.copyText.replace(/'/g, "\'").replace(/
+/g, '\n');
+        extra += `<div style="margin-top:8px;padding:10px;background:#f8fdf8;border:1px dashed #2ecc71;border-radius:6px;font-size:12px;color:#444;white-space:pre-line;">${t.copyText.replace(/\n/g, '<br>')}</div>
+          <button onclick="copyToClipboard(\`${escaped}\`)" style="margin-top:6px;padding:6px 12px;background:#2ecc71;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;">📋 Copy Message</button>`;
+      }
+      if (t.link) {
+        extra += `<a href="${t.link}" target="_blank" style="display:inline-block;margin-top:6px;margin-left:8px;padding:6px 12px;background:#0a5c36;color:#fff;border-radius:6px;font-size:11px;text-decoration:none;font-weight:600;">${t.linkLabel || '🔗 Open Link'}</a>`;
+      }
+      if (t.directoryList) {
+        extra += '<div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">';
+        t.directoryList.forEach(d => {
+          extra += `<a href="${d.url}" target="_blank" style="padding:8px;background:#f8fdf8;border:1px solid #d4f5e2;border-radius:6px;text-decoration:none;color:#0a5c36;font-size:12px;font-weight:600;">📍 ${d.name}<div style="font-size:10px;color:#666;font-weight:400;margin-top:2px;">${d.desc}</div></a>`;
+        });
+        extra += '</div>';
+      }
+      if (t.areaList) {
+        extra += '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">';
+        t.areaList.forEach(a => {
+          extra += `<span style="padding:4px 10px;background:#d4f5e2;color:#0a5c36;border-radius:12px;font-size:11px;font-weight:600;">${a}</span>`;
+        });
+        extra += '</div>';
+      }
+      if (t.aiAction) {
+        extra += `<button onclick="generateAIContent('${t.aiAction}','${t.aiKeyword || ''}','${t.id}')" style="margin-top:8px;padding:8px 14px;background:linear-gradient(135deg,#9b59b6,#8e44ad);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">🤖 Generate AI Content</button>
+          <div id="ai-output-${t.id}" style="margin-top:8px;"></div>`;
+      }
+      
+      return `
+        <div style="display:flex;gap:12px;padding:14px;border-bottom:1px solid #f0f0f0;align-items:flex-start;${isDone ? 'opacity:0.5;background:#fafafa;' : ''}">
+          <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleActionTask('${t.id}', this.checked)" style="margin-top:3px;width:18px;height:18px;cursor:pointer;accent-color:#2ecc71;">
+          <div style="flex:1;">
+            <div style="font-weight:600;color:#0a5c36;font-size:14px;${isDone ? 'text-decoration:line-through;' : ''}">${t.title}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px;white-space:pre-line;">${t.action}</div>
+            ${extra}
+            <div style="font-size:11px;color:#2ecc71;margin-top:6px;font-weight:600;">📊 ${t.impact}</div>
           </div>
-        `;
-      }).join('');
-      document.getElementById(containerId.replace('-list', '-section')).style.display = tierTasks.length ? 'block' : 'none';
+        </div>`;
     };
     
-    renderTaskList('critical', 'ap-critical-list');
-    renderTaskList('important', 'ap-important-list');
-    renderTaskList('growth', 'ap-growth-list');
+    const renderList = (tier, containerId) => {
+      const tt = tasks.filter(t => t.tier === tier);
+      const container = document.getElementById(containerId);
+      container.innerHTML = tt.map(renderTask).join('');
+      document.getElementById(containerId.replace('-list', '-section')).style.display = tt.length ? 'block' : 'none';
+    };
     
-    // Update progress
-    const totalTasks = tasks.length;
-    const doneTasks = tasks.filter(t => completed[t.id]).length;
-    const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
-    document.getElementById('ap-progress-text').textContent = `${doneTasks} / ${totalTasks} tasks`;
+    renderList('critical', 'ap-critical-list');
+    renderList('important', 'ap-important-list');
+    renderList('growth', 'ap-growth-list');
+    
+    const total = tasks.length;
+    const done = tasks.filter(t => completed[t.id]).length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    document.getElementById('ap-progress-text').textContent = `${done} / ${total} tasks`;
     document.getElementById('ap-progress-bar').style.width = pct + '%';
     
     let msg = '';
-    if (pct === 0) msg = 'Start with Critical tasks to see fastest impact';
-    else if (pct < 30) msg = 'Good start! Keep going with critical tasks';
-    else if (pct < 60) msg = 'Great progress! You are building momentum';
-    else if (pct < 90) msg = 'Almost there! Focus on growth tasks now';
-    else msg = 'Excellent! You are on track for Top 3';
+    if (pct === 0) msg = 'Start with Critical tasks - fastest impact';
+    else if (pct < 30) msg = 'Good start! Keep going';
+    else if (pct < 60) msg = 'Great progress! Building momentum';
+    else if (pct < 90) msg = 'Almost there! Focus on growth';
+    else msg = 'Excellent! On track for Top 3';
     document.getElementById('ap-progress-msg').textContent = msg;
     
     document.getElementById('ap-last-updated').textContent = 'Updated: just now';
@@ -3540,9 +3651,68 @@ async function loadActionPlan() {
     console.error(e);
     document.getElementById('ap-loading').style.display = 'none';
     document.getElementById('ap-empty').style.display = 'block';
-    document.getElementById('ap-empty').textContent = 'Error loading: ' + e.message;
+    document.getElementById('ap-empty').textContent = 'Error: ' + e.message;
   }
 }
+
+function copyToClipboard(txt) {
+  navigator.clipboard.writeText(txt).then(() => {
+    alert('Copied! Paste in WhatsApp now.');
+  });
+}
+
+async function generateAIContent(actionType, keyword, taskId) {
+  const outDiv = document.getElementById('ai-output-' + taskId);
+  outDiv.innerHTML = '<div style="padding:10px;color:#9b59b6;font-weight:600;font-size:12px;">🤖 AI is generating...</div>';
+  
+  try {
+    const aikeysDoc = await db.collection('users').doc(currentUser.uid).collection('settings').doc('aikeys').get();
+    const keys = aikeysDoc.exists ? aikeysDoc.data() : {};
+    const groqKey = keys.groq;
+    if (!groqKey) {
+      outDiv.innerHTML = '<div style="color:#e74c3c;font-size:12px;">No Groq API key in Settings. Add it first.</div>';
+      return;
+    }
+    
+    const compDoc = await db.collection('users').doc(currentUser.uid).collection('companies').doc(currentCompanyId).get();
+    const comp = compDoc.data();
+    const bizName = comp.gmbName || comp.name;
+    const city = (comp.gmbAddress || 'Hyderabad').split(',').pop().trim() || 'Hyderabad';
+    
+    let prompt = '';
+    if (actionType === 'gmb_posts') {
+      prompt = `Generate 4 ready-to-publish GMB post titles for "${bizName}" targeting keyword "${keyword}" in ${city}. Each title should be 50-80 characters, include the keyword naturally, and have a call-to-action. Format: numbered list only, no explanations.`;
+    } else if (actionType === 'qa') {
+      prompt = `Generate 10 Q&A pairs for the Google My Business profile of "${bizName}", an interior contractor in ${city}. Each question should be what a real customer would ask. Format: Q: ... / A: ... Keep answers under 50 words. Numbered list only.`;
+    } else if (actionType === 'description') {
+      prompt = `Write a 750-character GMB business description for "${bizName}", interior contractors in ${city}. Include keywords: interior contractors, office interior, home interior, modular kitchen, villa design. Make it persuasive, mention service areas, end with call-to-action. No headers or markdown, plain text only.`;
+    } else if (actionType === 'blog_topics') {
+      prompt = `Generate 12 SEO-friendly blog post topics for "${bizName}", interior contractors in ${city}. Topics should target local SEO and answer common customer queries. Format: numbered list with title + 1-line description.`;
+    }
+    
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7
+      })
+    });
+    const data = await res.json();
+    const out = data.choices?.[0]?.message?.content || 'No response';
+    
+    outDiv.innerHTML = `
+      <div style="padding:12px;background:linear-gradient(135deg,#faf3ff,#fff);border:1.5px solid #9b59b6;border-radius:8px;margin-top:8px;">
+        <div style="font-weight:700;color:#9b59b6;margin-bottom:8px;font-size:12px;">🤖 AI Generated Content:</div>
+        <div style="font-size:12px;color:#333;white-space:pre-line;line-height:1.6;">${out}</div>
+        <button onclick="copyToClipboard(\`${out.replace(/`/g, "'").replace(/'/g, "\'")}\`)" style="margin-top:8px;padding:6px 12px;background:#9b59b6;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;">📋 Copy All</button>
+      </div>`;
+  } catch(e) {
+    outDiv.innerHTML = '<div style="color:#e74c3c;font-size:12px;">Error: ' + e.message + '</div>';
+  }
+}
+
 
 async function toggleActionTask(taskId, isDone) {
   if (!currentUser || !currentCompanyId) return;
@@ -3559,7 +3729,6 @@ async function toggleActionTask(taskId, isDone) {
     console.error('Save failed', e);
   }
 }
-
 
 async function generateGMBStrategy() {
   const keyword  = document.getElementById('ai-target-keyword').value.trim();
