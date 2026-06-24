@@ -2940,43 +2940,26 @@ async function showKeywordDetail(kwId, keyword) {
 }
 
 async function runGridFromOverview(keyword) {
-  if (!keyword) return;
-
-  window._overviewGridKw = keyword;
-
-  const gridEl = document.getElementById('overview-detail-grid');
-  if (gridEl) {
-    gridEl.innerHTML =
-      '<div style="padding:18px;text-align:center;color:#0a5c36;font-weight:700;">Running live grid check for <br><span style="font-size:13px;color:#333;">' + keyword + '</span><br><span style="font-size:12px;color:#888;font-weight:400;">This can take 1-2 minutes depending on Google Places response.</span></div>';
-  }
-
-  try {
-    const gridSizeEl = document.getElementById('grid-size-select');
-    const gridSize = gridSizeEl ? parseInt(gridSizeEl.value || '5') : 5;
-
-    const built = await buildGridResults(keyword, gridSize);
-    const results = built.results;
-    const zone = built.zone;
-
-    await saveGridCache(keyword, results, gridSize, zone.label);
-
-    if (gridEl) {
-      gridEl.innerHTML =
-        '<div style="margin-bottom:8px;font-size:12px;color:#888;">Last grid: <b>just now</b> · ' +
-        '<button onclick="runGridFromOverview(window._overviewGridKw)" style="background:#0a5c36;color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:700;">Re-run Grid</button></div>' +
-        '<div id="overview-mini-grid"></div>';
-      renderMiniGrid(results, gridSize, 'overview-mini-grid');
-    }
-
-    if (typeof showToast === 'function') showToast('Grid check complete');
-  } catch(e) {
-    if (gridEl) {
-      gridEl.innerHTML =
-        '<div style="padding:18px;text-align:center;color:#c0392b;font-size:13px;">Grid check failed.<br><span style="font-size:12px;color:#666;">' + e.message + '</span><br>' +
-        '<button onclick="runGridFromOverview(window._overviewGridKw)" style="margin-top:10px;background:#0a5c36;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:700;">Try Again</button></div>';
-    }
-    console.log('Overview grid error:', e);
-  }
+  if(!keyword) return;
+  // 1. Switch to Rank Grid Tab
+  switchGMBTab(1);
+  
+  // 2. Setup the UI
+  const kwInput = document.getElementById('grid-keyword');
+  if (kwInput) kwInput.value = keyword;
+  
+  // 3. Wait for tab transition
+  await new Promise(r => setTimeout(r, 500));
+  
+  // 4. Start the Grid Process
+  await runGridCheck();
+  
+  // 5. Success! Return to Overview
+  showToast('Grid Check Complete ✅');
+  switchGMBTab('overview');
+  
+  // 6. Refresh the overview to show the new cached grid
+  if(typeof loadLocationKeywords === 'function') await loadLocationKeywords();
 }
 
 function closeKeywordDetail() { document.getElementById('overview-kw-detail').style.display = 'none'; }
@@ -3179,7 +3162,14 @@ function renderRankResult(results, gmbName, keyword, scope) {
 }
 
 // ---- TAB 1: COMPETITOR GRID ----
-async function buildGridResults(keyword, gridSize) {
+async function runGridCheck() {
+  const keyword  = document.getElementById('grid-keyword').value.trim();
+  const gridSize = parseInt(document.getElementById('grid-size-select').value);
+  if (!keyword) { alert('Enter a keyword for grid check'); return; }
+
+  document.getElementById('grid-loading').style.display = 'block';
+  document.getElementById('map-grid-container').innerHTML = '';
+
   const scope   = gridSize === 5 ? 'gachibowli' : 'hyderabad';
   const zone    = GMB_ZONES[scope];
   const apiKey  = await getSettingKey('googlePlacesKey');
@@ -3207,31 +3197,9 @@ async function buildGridResults(keyword, gridSize) {
     await new Promise(res => setTimeout(res, 200));
   }
 
-  return { results, zone };
-}
-
-async function runGridCheck() {
-  const keyword  = document.getElementById('grid-keyword').value.trim();
-  const gridSize = parseInt(document.getElementById('grid-size-select').value);
-  if (!keyword) { alert('Enter a keyword for grid check'); return; }
-
-  document.getElementById('grid-loading').style.display = 'block';
-  document.getElementById('map-grid-container').innerHTML = '';
-
-  try {
-    const built = await buildGridResults(keyword, gridSize);
-    const results = built.results;
-    const zone = built.zone;
-
-    document.getElementById('grid-loading').style.display = 'none';
-    renderGrid(results, gridSize, keyword, zone.label);
-    await saveGridCache(keyword, results, gridSize, zone.label);
-  } catch(e) {
-    document.getElementById('grid-loading').style.display = 'none';
-    document.getElementById('map-grid-container').innerHTML =
-      '<div style="padding:18px;background:#fff3f3;border:1px solid #e74c3c;border-radius:10px;color:#c0392b;font-size:13px;">Grid check failed: ' + e.message + '</div>';
-    console.log('Grid build error:', e);
-  }
+  document.getElementById('grid-loading').style.display = 'none';
+  renderGrid(results, gridSize, keyword, zone.label);
+  await saveGridCache(keyword, results, gridSize, zone.label);
 }
 
 function renderGrid(results, size, keyword, label) {
