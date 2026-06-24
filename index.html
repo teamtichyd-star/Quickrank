@@ -4263,14 +4263,16 @@ async function loadAISuggestions() {
     const website = comp.website || '';
     const prompt = 'You are an SEO expert for Indian local businesses. Generate 25 high-value search keywords for a business called "' + bizName + '"' + (website ? ' with website ' + website : '') + ' based in Hyderabad, India. Include local area modifiers (Gachibowli, HITEC City, Madhapur, Kondapur, Banjara Hills, Jubilee Hills), service variations, and long-tail phrases. Return ONLY a JSON array of objects: [{"keyword":"...","volume":"approx monthly searches e.g. 1,200","cpc":"approx INR CPC e.g. 45"}]. No explanation, no markdown, just the JSON array.';
     const result = await callAI('groq', prompt, keys);
-    // Parse JSON from result
     let kwList = [];
     try {
-      const match = result.match(/\[[\s\S]*\]/);
-      if (match) kwList = JSON.parse(match[0]);
-    } catch(e) {
-      container.innerHTML = '<div style="color:#e74c3c;font-size:13px;padding:20px;">Could not parse AI response. Try again.</div>';
-      return;
+      let clean = result.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const sIdx = clean.indexOf('[');
+      const eIdx = clean.lastIndexOf(']');
+      if (sIdx !== -1 && eIdx !== -1) {
+        kwList = JSON.parse(clean.substring(sIdx, eIdx + 1));
+      }
+    } catch(err) {
+      console.error('AI JSON Parse Error:', err, '\nRaw Output:', result);
     }
     if (!kwList.length) {
       container.innerHTML = '<div style="color:#aaa;font-size:13px;text-align:center;padding:30px 0;">No keywords returned. Try again.</div>';
