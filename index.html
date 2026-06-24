@@ -2571,8 +2571,17 @@ function exportAuditPDF(){
    NAVIGATION
 ══════════════════════════════ */
 function showPage(page,el){
+  const target=document.getElementById('page-'+page);
+  const firstPage=document.querySelector('[id^="page-"]');
+  const host=firstPage?firstPage.parentElement:null;
+
+  // If a page got nested inside another hidden page, move it back to top-level
+  if(target&&host&&target.parentElement!==host){
+    host.appendChild(target);
+  }
+
   document.querySelectorAll('[id^="page-"]').forEach(p=>p.style.display='none');
-  document.getElementById('page-'+page).style.display='block';
+  if(target) target.style.display='block';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el)el.classList.add('active');
   if(window.innerWidth<=768)closeSidebar();
