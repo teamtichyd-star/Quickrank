@@ -4154,15 +4154,11 @@ let kwSuggestSelections = {}; // { keyword: true/false }
 let kwTrackedSet = new Set();  // currently tracked keywords (lowercase)
 
 function openKeywordSuggest() {
-  // Build tracked set from current keyword list
+  // Build tracked set ONLY from actual tracked keyword list on Overview
   kwTrackedSet = new Set();
-  document.querySelectorAll('#overview-kw-list .kw-row, #kw-list .kw-item, [data-kw]').forEach(el => {
-    const kw = el.getAttribute('data-kw') || el.querySelector('.kw-name')?.textContent || '';
+  document.querySelectorAll('#overview-kw-list .kw-name, #overview-kw-list [data-keyword], #kw-list .kw-name, #kw-list [data-keyword]').forEach(el => {
+    const kw = el.getAttribute('data-keyword') || el.textContent || '';
     if (kw) kwTrackedSet.add(kw.trim().toLowerCase());
-  });
-  // Also read from rendered keyword table rows
-  document.querySelectorAll('[data-keyword]').forEach(el => {
-    kwTrackedSet.add((el.getAttribute('data-keyword') || '').trim().toLowerCase());
   });
   kwSuggestSelections = {};
   document.getElementById('kwSuggestModal').style.display = 'flex';
