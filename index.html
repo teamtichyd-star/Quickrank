@@ -4265,7 +4265,7 @@ async function loadAISuggestions() {
     const result = await callAI('groq', prompt, keys);
     let kwList = [];
     try {
-      let clean = result.replace(/```json/gi, '').replace(/```/g, '').trim();
+      let clean = (result.text || result || '').replace(/```json/gi, '').replace(/```/g, '').trim();
       const sIdx = clean.indexOf('[');
       const eIdx = clean.lastIndexOf(']');
       if (sIdx !== -1 && eIdx !== -1) {
