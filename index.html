@@ -2383,8 +2383,9 @@ const providerModels={groq:['llama-3.3-70b-versatile','llama-3.1-8b-instant','mi
 document.getElementById('aiProviderSelect').addEventListener('change',function(){document.getElementById('aiModelSelect').innerHTML=providerModels[this.value].map(m=>`<option value="${m}">${m}</option>`).join('');});
 async function loadAIKeyStatuses(){
   const keys=await loadAIKeys();
-  ['groq','openai','anthropic','gemini','mistral','cohere','together'].forEach(p=>{const el=document.getElementById(`s-${p}Key`);if(el&&keys[p])el.value=keys[p];});
-  document.getElementById('keyStatusGrid').innerHTML=['groq','openai','anthropic','gemini','mistral','cohere','together'].map(p=>`<div class="key-status-item ${keys[p]?'key-ok':'key-missing'}">${keys[p]?'✅':'❌'} ${p.charAt(0).toUpperCase()+p.slice(1)}</div>`).join('');
+  ['groq','openai','anthropic','gemini','mistral','cohere','together'].forEach(p=>{const el=document.getElementById('s-'+p+'Key');if(el&&keys[p])el.value=keys[p];});
+  const grid=document.getElementById('keyStatusGrid');
+  if(grid) grid.innerHTML=['groq','openai','anthropic','gemini','mistral','cohere','together'].map(p=>'<div class="key-status-item '+(keys[p]?'key-ok':'key-missing')+'">'+(keys[p]?'✅':'❌')+' '+p.charAt(0).toUpperCase()+p.slice(1)+'</div>').join('');
 }
 async function saveAIKeys(){
   const data={};['groq','openai','anthropic','gemini','mistral','cohere','together'].forEach(p=>{const v=document.getElementById(`s-${p}Key`)?.value.trim();if(v)data[p]=v;});
