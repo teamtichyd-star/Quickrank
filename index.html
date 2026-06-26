@@ -2527,8 +2527,7 @@ For each of these 5 search queries, tell me:
 3. What position would it likely be mentioned (1st, 2nd, 3rd, not mentioned)?
 
 Queries:
-${queries.map((q,i)=>`${i+1}. "${q}"`).join('
-')}
+${queries.map((q,i)=>(i+1)+'. "'+q+'"').join('\n')}
 
 Then give:
 - Overall AI Visibility Score out of 100
