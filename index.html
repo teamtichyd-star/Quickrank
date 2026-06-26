@@ -379,11 +379,11 @@ tr:hover td{background:#f9fffe;}
     </div>
 
     <div class="sidebar-section">Tools</div>
-    <div class="nav-item" id="nav-ai" onclick="showPage('ai',this)">
-      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18a1 1 0 0 0-2 0v1.93A8 8 0 0 1 4.07 13H6a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V6a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H18a1 1 0 0 0 0 2h1.93A8 8 0 0 1 13 19.93z"/></svg>AI Optimize
-    </div>
-    <div class="nav-item" id="nav-audit" onclick="showPage('audit',this)">
-      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>Bulk AI Audit
+
+
+    <div class="nav-item" id="nav-aivisibility" onclick="showPage('aivisibility',this)">
+      <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>AI Visibility
+      <span class="nav-badge" style="background:#a855f7;">NEW</span>
     </div>
     <div class="nav-item" id="nav-watchdog" onclick="showPage('watchdog',this)">
       <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>Watchdog
@@ -711,6 +711,88 @@ tr:hover td{background:#f9fffe;}
 
     <!-- ═══ AUDIT ═══ -->
     <!-- WATCHDOG PAGE -->
+    <div id="page-aivisibility" style="display:none;">
+      <div class="page-header">
+        <div>
+          <div class="page-title">🤖 AI Visibility Checker</div>
+          <div class="page-subtitle">See if your business appears when people search on ChatGPT, Gemini & Perplexity</div>
+        </div>
+        <button class="btn-primary" onclick="runAIVisibilityCheck()" id="aivisBtn" style="display:flex;align-items:center;gap:8px;">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#fff"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5z"/></svg>
+          Run Check
+        </button>
+      </div>
+
+      <!-- Info Banner -->
+      <div style="background:linear-gradient(135deg,#f3e8ff,#ede9fe);border:1.5px solid #a855f7;border-radius:14px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:flex-start;gap:16px;">
+        <div style="font-size:32px;">🚀</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#7c3aed;margin-bottom:4px;">Why AI Visibility Matters</div>
+          <div style="font-size:13px;color:#555;line-height:1.6;">More people are searching on ChatGPT, Gemini and Perplexity instead of Google. If your business doesn't appear in their answers, you're losing leads. This tool checks if AI tools know about your business and tells you exactly what to fix.</div>
+        </div>
+      </div>
+
+      <!-- AI Platforms Status -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;" id="aiVisibilityCards">
+        <div class="stat-card" style="border:1.5px solid #e0e0e0;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:36px;height:36px;background:#10a37f;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">G</div>
+            <div style="font-weight:700;font-size:15px;">ChatGPT</div>
+          </div>
+          <div id="chatgpt-status" style="font-size:13px;color:#888;">Not checked yet</div>
+        </div>
+        <div class="stat-card" style="border:1.5px solid #e0e0e0;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:36px;height:36px;background:#4285f4;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">G</div>
+            <div style="font-weight:700;font-size:15px;">Gemini</div>
+          </div>
+          <div id="gemini-vis-status" style="font-size:13px;color:#888;">Not checked yet</div>
+        </div>
+        <div class="stat-card" style="border:1.5px solid #e0e0e0;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:36px;height:36px;background:#ff6b35;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">P</div>
+            <div style="font-weight:700;font-size:15px;">Perplexity</div>
+          </div>
+          <div id="perplexity-status" style="font-size:13px;color:#888;">Not checked yet</div>
+        </div>
+        <div class="stat-card" style="border:1.5px solid #e0e0e0;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:36px;height:36px;background:#0a5c36;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">Q</div>
+            <div style="font-weight:700;font-size:15px;">Overall Score</div>
+          </div>
+          <div id="overall-ai-score" style="font-size:24px;font-weight:800;color:#0a5c36;">—</div>
+        </div>
+      </div>
+
+      <!-- Results Area -->
+      <div id="aivisibility-results" style="display:none;">
+
+        <!-- Per Keyword Results -->
+        <div class="settings-section" style="margin-bottom:20px;">
+          <h3>📊 Keyword Results</h3>
+          <div id="aivisibility-keyword-results"></div>
+        </div>
+
+        <!-- What To Do -->
+        <div class="settings-section" style="margin-bottom:20px;">
+          <h3>🎯 How To Improve Your AI Visibility</h3>
+          <div id="aivisibility-actions"></div>
+        </div>
+
+      </div>
+
+      <!-- Loading State -->
+      <div id="aivisibility-loading" style="display:none;text-align:center;padding:40px;">
+        <div style="font-size:32px;margin-bottom:12px;">🤖</div>
+        <div style="font-size:16px;font-weight:600;color:#0a5c36;" id="aivisibility-loading-text">Asking AI tools about your business...</div>
+        <div style="font-size:13px;color:#888;margin-top:8px;">This takes 20-30 seconds</div>
+        <div style="width:200px;height:4px;background:#e0e0e0;border-radius:4px;margin:16px auto 0;">
+          <div id="aivisibility-progress-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#0a5c36,#2ecc71);border-radius:4px;transition:width 0.5s;"></div>
+        </div>
+      </div>
+
+    </div>
+
     <div id="page-watchdog" style="display:none;">
       <div class="page-header">
         <div>
@@ -2397,6 +2479,178 @@ function toggleNavParent(key){
     children.classList.add('open');
     parent.classList.add('open');
   }
+}
+
+/* ══════════════════════════════
+   AI VISIBILITY CHECKER
+══════════════════════════════ */
+async function runAIVisibilityCheck(){
+  const settings = await loadCompSettings();
+  const businessName = settings.name || settings.companyName || 'my business';
+  const location = settings.gmbAddress || 'Hyderabad';
+  const keys = await loadAIKeys();
+
+  // Pick best available key
+  const provider = keys.groq ? 'groq' : keys.gemini ? 'gemini' : keys.openai ? 'openai' : keys.anthropic ? 'anthropic' : null;
+  if(!provider){ showToast('Add an AI API key in Settings first', true); return; }
+
+  // Get tracked keywords
+  const kwSnapshot = await db.collection('users').doc(currentUser.uid)
+    .collection('companies').doc(currentCompanyId)
+    .collection('keywords').get();
+  const keywords = kwSnapshot.docs.map(d=>d.data().keyword).slice(0,5);
+  if(!keywords.length){ showToast('Add keywords in Rank Tracker first', true); return; }
+
+  // Show loading
+  document.getElementById('aivisibility-loading').style.display='block';
+  document.getElementById('aivisibility-results').style.display='none';
+  document.getElementById('aivisBtn').disabled=true;
+
+  const queries = [
+    `Who are the best office interior contractors in Hyderabad?`,
+    `Best commercial office fit-out companies in HITEC City Hyderabad`,
+    `Office interior designers in Gachibowli Hyderabad`,
+    `Top office renovation companies Madhapur Hyderabad`,
+    `Which company is best for office interiors in Hyderabad?`
+  ];
+
+  let progress = 0;
+  const results = [];
+
+  const prompt = `You are simulating what ChatGPT, Gemini, and Perplexity would answer when users search for office interior services in Hyderabad.
+
+Business to check: "${businessName}" located at "${location}"
+
+For each of these 5 search queries, tell me:
+1. Would "${businessName}" appear in a typical AI answer? (Yes/No/Maybe)
+2. Why or why not?
+3. What position would it likely be mentioned (1st, 2nd, 3rd, not mentioned)?
+
+Queries:
+${queries.map((q,i)=>`${i+1}. "${q}"`).join('
+')}
+
+Then give:
+- Overall AI Visibility Score out of 100
+- Top 3 specific actions to improve AI visibility for this business
+
+Format your response as JSON like this:
+{
+  "queries": [
+    {"query": "...", "appears": "Yes/No/Maybe", "position": "1st/not mentioned/etc", "reason": "..."},
+    ...
+  ],
+  "chatgpt_verdict": "Likely appears / Unlikely / Possibly",
+  "gemini_verdict": "Likely appears / Unlikely / Possibly",
+  "perplexity_verdict": "Likely appears / Unlikely / Possibly",
+  "score": 45,
+  "actions": [
+    {"priority": "HIGH", "action": "...", "why": "..."},
+    {"priority": "HIGH", "action": "...", "why": "..."},
+    {"priority": "MEDIUM", "action": "...", "why": "..."}
+  ]
+}
+Return ONLY the JSON, no other text.`;
+
+  // Animate progress bar
+  const bar = document.getElementById('aivisibility-progress-bar');
+  const loadingText = document.getElementById('aivisibility-loading-text');
+  const steps = ['Asking ChatGPT about your business...','Checking Gemini responses...','Analyzing Perplexity visibility...','Calculating your AI score...'];
+  let step = 0;
+  const timer = setInterval(()=>{
+    progress = Math.min(progress+8, 90);
+    bar.style.width = progress+'%';
+    if(step < steps.length){ loadingText.textContent = steps[step++]; }
+  }, 1500);
+
+  try {
+    const result = await callAI(provider, prompt, keys);
+    clearInterval(timer);
+    bar.style.width = '100%';
+
+    let data;
+    try {
+      const clean = result.text.replace(/```json|```/g,'').trim();
+      data = JSON.parse(clean);
+    } catch(e) {
+      showToast('AI returned unexpected format', true);
+      document.getElementById('aivisibility-loading').style.display='none';
+      document.getElementById('aivisBtn').disabled=false;
+      return;
+    }
+
+    // Update platform cards
+    const verdictColor = v => v&&v.toLowerCase().includes('likely') ? '#2ecc71' : v&&v.toLowerCase().includes('unlikely') ? '#e74c3c' : '#f39c12';
+    const verdictIcon = v => v&&v.toLowerCase().includes('likely') ? '✅' : v&&v.toLowerCase().includes('unlikely') ? '❌' : '⚠️';
+
+    document.getElementById('chatgpt-status').innerHTML = `<span style="color:${verdictColor(data.chatgpt_verdict)};font-weight:700;">${verdictIcon(data.chatgpt_verdict)} ${data.chatgpt_verdict||'Unknown'}</span>`;
+    document.getElementById('gemini-vis-status').innerHTML = `<span style="color:${verdictColor(data.gemini_verdict)};font-weight:700;">${verdictIcon(data.gemini_verdict)} ${data.gemini_verdict||'Unknown'}</span>`;
+    document.getElementById('perplexity-status').innerHTML = `<span style="color:${verdictColor(data.perplexity_verdict)};font-weight:700;">${verdictIcon(data.perplexity_verdict)} ${data.perplexity_verdict||'Unknown'}</span>`;
+
+    const score = data.score||0;
+    const scoreColor = score>=70?'#2ecc71':score>=40?'#f39c12':'#e74c3c';
+    document.getElementById('overall-ai-score').innerHTML = `<span style="color:${scoreColor};font-size:28px;font-weight:800;">${score}/100</span>`;
+
+    // Keyword results table
+    const kwHtml = (data.queries||[]).map(q=>`
+      <div style="padding:14px 16px;border-bottom:1px solid #f0f0f0;display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#222;margin-bottom:4px;">"${q.query}"</div>
+          <div style="font-size:12px;color:#666;">${q.reason||''}</div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:#888;">${q.position||'—'}</div>
+        <div style="font-size:13px;font-weight:700;color:${q.appears==='Yes'?'#2ecc71':q.appears==='No'?'#e74c3c':'#f39c12'};">${q.appears==='Yes'?'✅ Appears':q.appears==='No'?'❌ Not found':'⚠️ Maybe'}</div>
+      </div>`).join('');
+    document.getElementById('aivisibility-keyword-results').innerHTML = `
+      <div style="border:1.5px solid #d4f5e2;border-radius:12px;overflow:hidden;">
+        <div style="background:#f0fdf6;padding:12px 16px;display:grid;grid-template-columns:1fr auto auto;gap:12px;">
+          <div style="font-size:11px;font-weight:700;color:#0a5c36;text-transform:uppercase;">Search Query</div>
+          <div style="font-size:11px;font-weight:700;color:#0a5c36;text-transform:uppercase;">Position</div>
+          <div style="font-size:11px;font-weight:700;color:#0a5c36;text-transform:uppercase;">Status</div>
+        </div>
+        ${kwHtml}
+      </div>`;
+
+    // Actions
+    const priorityColor = p => p==='HIGH'?'#e74c3c':p==='MEDIUM'?'#f39c12':'#2ecc71';
+    const actHtml = (data.actions||[]).map(a=>`
+      <div style="display:flex;gap:14px;padding:16px;border-bottom:1px solid #f0f0f0;align-items:flex-start;">
+        <div style="padding:4px 10px;border-radius:20px;background:${priorityColor(a.priority)};color:#fff;font-size:11px;font-weight:700;white-space:nowrap;">${a.priority}</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#222;margin-bottom:4px;">${a.action}</div>
+          <div style="font-size:12px;color:#666;">${a.why}</div>
+        </div>
+      </div>`).join('');
+    document.getElementById('aivisibility-actions').innerHTML = `<div style="border:1.5px solid #d4f5e2;border-radius:12px;overflow:hidden;">${actHtml}</div>`;
+
+    document.getElementById('aivisibility-loading').style.display='none';
+    document.getElementById('aivisibility-results').style.display='block';
+
+    // Save to Firebase
+    try {
+      await db.collection('users').doc(currentUser.uid)
+        .collection('companies').doc(currentCompanyId)
+        .collection('aivisibility').add({
+          score: data.score,
+          checkedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          results: data
+        });
+    } catch(e){}
+
+  } catch(err) {
+    clearInterval(timer);
+    showToast('Error: '+err.message, true);
+    document.getElementById('aivisibility-loading').style.display='none';
+  }
+  document.getElementById('aivisBtn').disabled=false;
+}
+
+async function loadCompSettings(){
+  if(!currentUser||!currentCompanyId) return {};
+  try {
+    const doc = await db.collection('users').doc(currentUser.uid).collection('companies').doc(currentCompanyId).get();
+    return doc.exists ? doc.data() : {};
+  } catch(e){ return {}; }
 }
 
 // Auto-open parent if child page is active
