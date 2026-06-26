@@ -2486,20 +2486,249 @@ function toggleNavParent(key){
 ══════════════════════════════ */
 async function runAIVisibilityCheck(){
   const settings = await loadCompSettings();
-  const businessName = settings.name || settings.companyName || 'my business';
-  const location = settings.gmbAddress || 'Hyderabad';
+  const businessName = settings.name || settings.companyName || 'My Business';
+  const websiteURL = settings.website || '';
+  const gmbName = settings.gmbName || businessName;
+  const gmbAddress = settings.gmbAddress || 'Hyderabad';
+  const gmbLat = settings.gmbLat || '';
+  const gmbLng = settings.gmbLng || '';
   const keys = await loadAIKeys();
 
   // Pick best available key
   const provider = keys.groq ? 'groq' : keys.gemini ? 'gemini' : keys.openai ? 'openai' : keys.anthropic ? 'anthropic' : null;
   if(!provider){ showToast('Add an AI API key in Settings first', true); return; }
+  if(!businessName || businessName==='My Business'){ showToast('Add your business name in Settings first', true); return; }
 
   // Get tracked keywords
   const kwSnapshot = await db.collection('users').doc(currentUser.uid)
     .collection('companies').doc(currentCompanyId)
     .collection('keywords').get();
   const keywords = kwSnapshot.docs.map(d=>d.data().keyword).slice(0,5);
-  if(!keywords.length){ showToast('Add keywords in Rank Tracker first', true); return; }
+
+  // Show loading
+  document.getElementById('aivisibility-loading').style.display='block';
+  document.getElementById('aivisibility-results').style.display='none';
+  document.getElementById('aivisBtn').disabled=true;
+
+  // Fetch website content via Jina.ai
+  let websiteData = { h1:'Not fetched', meta:'Not fetched', title:'Not fetched', content:'' };
+  if(websiteURL){
+    try {
+      const jinaResp = await fetch('https://r.jina.ai/'+websiteURL);
+      const jinaText = await jinaResp.text();
+      websiteData.content = jinaText.slice(0,1500);
+      // Extract title
+      const titleMatch = jinaText.match(/Title:\s*(.+)/i);
+      if(titleMatch) websiteData.title = titleMatch[1].trim();
+      // Extract H1
+      const h1Match = jinaText.match(/#{1,2}\s+(.+)/);
+      if(h1Match) websiteData.h1 = h1Match[1].trim();
+    } catch(e){ websiteData.content = 'Could not fetch website'; }
+  }
+
+  // Animate progress
+  const bar = document.getElementById('aivisibility-progress-bar');
+  const loadingText = document.getElementById('aivisibility-loading-text');
+  const steps = [
+    'Reading your website content...',
+    'Checking what ChatGPT knows about you...',
+    'Analyzing Gemini visibility...',
+    'Checking Perplexity presence...',
+    'Generating specific action plan...'
+  ];
+  let progress = 0, step = 0;
+  const timer = setInterval(()=>{
+    progress = Math.min(progress+6, 90);
+    bar.style.width = progress+'%';
+    if(step < steps.length){ loadingText.textContent = steps[step++]; }
+  }, 1800);
+
+  // Build queries from real keywords + location
+  const location = gmbAddress.includes('Hyderabad') ? gmbAddress : gmbAddress+', Hyderabad';
+  const kwQueries = keywords.length > 0
+    ? keywords.slice(0,3).map(k=>k+' in Hyderabad')
+    : ['office interior contractors in Hyderabad','commercial fit-out companies Hyderabad','office renovation Hyderabad'];
+
+  const allQueries = [
+    'Who are the best '+( keywords[0]||'office interior contractors')+' in Hyderabad?',
+    'Best commercial office fit-out companies in HITEC City Hyderabad',
+    ...kwQueries
+  ].slice(0,5);
+
+  const prompt = 'You are an expert in AI Search Engine Optimization (AEO) and local business visibility on AI tools like ChatGPT, Gemini, and Perplexity.
+
+'+
+'BUSINESS DETAILS:
+'+
+'- Business Name: "'+gmbName+'"
+'+
+'- Website: '+websiteURL+'
+'+
+'- Location: '+gmbAddress+'
+'+
+'- Website Title: '+websiteData.title+'
+'+
+'- Website H1: '+websiteData.h1+'
+'+
+'- Website Content Sample: '+websiteData.content.slice(0,800)+'
+'+
+'- Tracked Keywords: '+keywords.join(', ')+'
+
+'+
+'TASK 1 — AI VISIBILITY CHECK:
+'+
+'For each query below, analyze if "'+gmbName+'" would appear in ChatGPT/Gemini/Perplexity answers:
+'+
+allQueries.map((q,i)=>(i+1)+'. "'+q+'"').join('
+')+'
+
+'+
+'TASK 2 — SPECIFIC ACTION PLAN:
+'+
+'Based on the actual website content and business details above, give 5 highly specific actions to improve AI visibility. Each action must:
+'+
+'- Reference actual content from their website
+'+
+'- Give exact copy-paste text where applicable
+'+
+'- Include a direct URL where they can take action
+'+
+'- Explain exactly why this helps AI tools find them
+
+'+
+'Examples of GOOD specific actions:
+'+
+'- "Your website H1 says \"'+websiteData.h1+'\" — change it to \"Office Interior Contractors Hyderabad | Turnkey Interior Solutions\" — AI tools use H1 to identify what your business does"
+'+
+'- "Add your business to IndiaMART at indiamart.com/sell — AI tools frequently cite IndiaMART listings when answering business queries"
+'+
+'- "Your GMB description should include: commercial office fit-out, glass partitions, modular workstations, HITEC City, Gachibowli — these exact phrases trigger AI mentions"
+
+'+
+'Return ONLY this JSON, no other text:
+'+
+'{
+'+
+'  "queries": [
+'+
+'    {"query":"...","appears":"Yes/No/Maybe","position":"1st/2nd/3rd/not mentioned","reason":"specific reason based on their actual website data"},
+'+
+'    ...
+'+
+'  ],
+'+
+'  "chatgpt_verdict": "Likely appears/Unlikely/Possibly",
+'+
+'  "gemini_verdict": "Likely appears/Unlikely/Possibly",
+'+
+'  "perplexity_verdict": "Likely appears/Unlikely/Possibly",
+'+
+'  "score": 0-100,
+'+
+'  "score_reason": "one sentence explaining the score based on actual website analysis",
+'+
+'  "actions": [
+'+
+'    {
+'+
+'      "priority": "HIGH/MEDIUM/LOW",
+'+
+'      "action": "specific action with exact copy-paste text if applicable",
+'+
+'      "why": "exactly why this helps AI tools find them",
+'+
+'      "link": "direct URL to take action or empty string",
+'+
+'      "link_label": "short label for the link button"
+'+
+'    }
+'+
+'  ]
+'+
+'}';
+
+  try {
+    const result = await callAI(provider, prompt, keys);
+    clearInterval(timer);
+    bar.style.width = '100%';
+
+    let data;
+    try {
+      const clean = result.text.replace(/```json|```/g,'').trim();
+      data = JSON.parse(clean);
+    } catch(e) {
+      showToast('AI returned unexpected format — try again', true);
+      document.getElementById('aivisibility-loading').style.display='none';
+      document.getElementById('aivisBtn').disabled=false;
+      return;
+    }
+
+    // Update platform cards
+    const verdictColor = v => v&&v.toLowerCase().includes('likely') ? '#2ecc71' : v&&v.toLowerCase().includes('unlikely') ? '#e74c3c' : '#f39c12';
+    const verdictIcon = v => v&&v.toLowerCase().includes('likely') ? '✅' : v&&v.toLowerCase().includes('unlikely') ? '❌' : '⚠️';
+
+    document.getElementById('chatgpt-status').innerHTML = '<span style="color:'+verdictColor(data.chatgpt_verdict)+';font-weight:700;">'+verdictIcon(data.chatgpt_verdict)+' '+(data.chatgpt_verdict||'Unknown')+'</span>';
+    document.getElementById('gemini-vis-status').innerHTML = '<span style="color:'+verdictColor(data.gemini_verdict)+';font-weight:700;">'+verdictIcon(data.gemini_verdict)+' '+(data.gemini_verdict||'Unknown')+'</span>';
+    document.getElementById('perplexity-status').innerHTML = '<span style="color:'+verdictColor(data.perplexity_verdict)+';font-weight:700;">'+verdictIcon(data.perplexity_verdict)+' '+(data.perplexity_verdict||'Unknown')+'</span>';
+
+    const score = data.score||0;
+    const scoreColor = score>=70?'#2ecc71':score>=40?'#f39c12':'#e74c3c';
+    document.getElementById('overall-ai-score').innerHTML = '<span style="color:'+scoreColor+';font-size:28px;font-weight:800;">'+score+'/100</span><div style="font-size:11px;color:#888;margin-top:4px;">'+(data.score_reason||'')+'</div>';
+
+    // Keyword results
+    const kwHtml = (data.queries||[]).map(q=>
+      '<div style="padding:14px 16px;border-bottom:1px solid #f0f0f0;display:grid;grid-template-columns:1fr 100px 90px;gap:12px;align-items:start;">'+
+        '<div>'+
+          '<div style="font-size:13px;font-weight:600;color:#222;margin-bottom:4px;">"'+q.query+'"</div>'+
+          '<div style="font-size:12px;color:#666;line-height:1.5;">'+q.reason+'</div>'+
+        '</div>'+
+        '<div style="font-size:12px;font-weight:600;color:#888;padding-top:2px;">'+q.position+'</div>'+
+        '<div style="font-size:13px;font-weight:700;color:'+(q.appears==='Yes'?'#2ecc71':q.appears==='No'?'#e74c3c':'#f39c12')+';padding-top:2px;">'+(q.appears==='Yes'?'✅ Appears':q.appears==='No'?'❌ Missing':'⚠️ Maybe')+'</div>'+
+      '</div>'
+    ).join('');
+    document.getElementById('aivisibility-keyword-results').innerHTML =
+      '<div style="border:1.5px solid #d4f5e2;border-radius:12px;overflow:hidden;">'+
+        '<div style="background:#f0fdf6;padding:12px 16px;display:grid;grid-template-columns:1fr 100px 90px;gap:12px;">'+
+          '<div style="font-size:11px;font-weight:700;color:#0a5c36;text-transform:uppercase;">Search Query</div>'+
+          '<div style="font-size:11px;font-weight:700;color:#0a5c36;text-transform:uppercase;">Position</div>'+
+          '<div style="font-size:11px;font-weight:700;color:#0a5c36;text-transform:uppercase;">Status</div>'+
+        '</div>'+kwHtml+'</div>';
+
+    // Actions with links
+    const priorityColor = p => p==='HIGH'?'#e74c3c':p==='MEDIUM'?'#f39c12':'#2ecc71';
+    const actHtml = (data.actions||[]).map(a=>
+      '<div style="padding:18px 20px;border-bottom:1px solid #f0f0f0;">'+
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
+          '<span style="padding:3px 10px;border-radius:20px;background:'+priorityColor(a.priority)+';color:#fff;font-size:11px;font-weight:700;">'+a.priority+'</span>'+
+          '<div style="font-size:14px;font-weight:700;color:#222;">'+a.action+'</div>'+
+        '</div>'+
+        '<div style="font-size:13px;color:#555;margin-bottom:10px;line-height:1.6;">'+a.why+'</div>'+
+        (a.link ? '<a href="'+a.link+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#0a5c36;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">🔗 '+(a.link_label||'Take Action')+'</a>' : '')+
+      '</div>'
+    ).join('');
+    document.getElementById('aivisibility-actions').innerHTML =
+      '<div style="border:1.5px solid #d4f5e2;border-radius:12px;overflow:hidden;">'+actHtml+'</div>';
+
+    document.getElementById('aivisibility-loading').style.display='none';
+    document.getElementById('aivisibility-results').style.display='block';
+
+    // Save to Firebase
+    try {
+      await db.collection('users').doc(currentUser.uid)
+        .collection('companies').doc(currentCompanyId)
+        .collection('aivisibility').add({
+          score: data.score,
+          checkedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          results: data
+        });
+    } catch(e){}
+
+  } catch(err) {
+    clearInterval(timer);
+    showToast('Error: '+err.message, true);
+    document.getElementById('aivisibility-loading').style.display='none';
+  }
+  document.getElementById('aivisBtn').disabled=false;
 
   // Show loading
   document.getElementById('aivisibility-loading').style.display='block';
