@@ -2587,7 +2587,7 @@ async function runAIVisibilityCheck(){
     '  "score_reason": "one sentence explaining score",',
     '  "actions": [{"priority":"HIGH/MEDIUM/LOW","action":"specific action with copy-paste text","why":"why this helps AI","link":"direct URL","link_label":"short label"}]',
     '}'
-  ].join('\n')
+  ].join('\n');
 
   try {
     const result = await callAI(provider, prompt, keys);
