@@ -2607,7 +2607,7 @@ async function runAIVisibilityCheck(){
 
     // Update platform cards
     const verdictColor = v => v&&v.toLowerCase().includes('likely') ? '#2ecc71' : v&&v.toLowerCase().includes('unlikely') ? '#e74c3c' : '#f39c12';
-    const verdictIcon = v => v&&v.toLowerCase().includes('likely') ? '✅' : v&&v.toLowerCase().includes('unlikely') ? '❌' : '⚠️';
+    const verdictIcon = v => !v ? '❓' : v.toLowerCase().includes('unlikely') ? '❌' : v.toLowerCase().includes('likely') ? '✅' : '⚠️';
 
     document.getElementById('chatgpt-status').innerHTML = '<span style="color:'+verdictColor(data.chatgpt_verdict)+';font-weight:700;">'+verdictIcon(data.chatgpt_verdict)+' '+(data.chatgpt_verdict||'Unknown')+'</span>';
     document.getElementById('gemini-vis-status').innerHTML = '<span style="color:'+verdictColor(data.gemini_verdict)+';font-weight:700;">'+verdictIcon(data.gemini_verdict)+' '+(data.gemini_verdict||'Unknown')+'</span>';
