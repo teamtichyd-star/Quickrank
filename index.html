@@ -1101,8 +1101,34 @@ tr:hover td{background:#f9fffe;}
         <div class="form-group"><label>Company Name</label><input type="text" id="s-companyName"></div>
         <div class="form-group"><label>Website URL</label><input type="url" id="s-website"></div>
         <div class="form-group"><label>GSC Property</label><input type="url" id="s-gscProperty"></div>
+        <div class="form-group">
+          <label>Industry / Business Type</label>
+          <input type="text" id="s-industry" placeholder="e.g. Commercial Interior Contractor, Restaurant, IT Company">
+          <div class="form-hint">Used by AI to give industry-specific suggestions</div>
+        </div>
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" id="s-city" placeholder="e.g. Hyderabad, Mumbai, Bangalore">
+        </div>
+        <div class="form-group">
+          <label>Target Areas <span style="color:#888;font-weight:400;font-size:12px;">(comma separated)</span></label>
+          <input type="text" id="s-targetAreas" placeholder="e.g. HITEC City, Gachibowli, Madhapur, Kondapur">
+          <div class="form-hint">Areas where you want to rank — used in AI analysis and GMB suggestions</div>
+        </div>
+        <div class="form-group">
+          <label>Main Services <span style="color:#888;font-weight:400;font-size:12px;">(comma separated)</span></label>
+          <input type="text" id="s-services" placeholder="e.g. Office fit-out, Glass partitions, Modular workstations, False ceiling">
+          <div class="form-hint">Your key services — used in AI suggestions and content planner</div>
+        </div>
         <div class="form-group"><label>GMB Name</label><input type="text" id="s-gmbName"></div>
         <div class="form-group"><label>GMB Address</label><input type="text" id="s-gmbAddress"></div>
+        <div class="form-group">
+          <label>GMB Description <span style="color:#888;font-weight:400;font-size:12px;">(current)</span></label>
+          <textarea id="s-gmbDescription" rows="4" placeholder="Paste your current Google Business Profile description here..." style="width:100%;padding:10px 14px;border:1.5px solid #d4f5e2;border-radius:8px;font-size:13px;resize:vertical;font-family:inherit;"></textarea>
+          <div class="form-hint">Copy from business.google.com → Edit profile → Business description</div>
+          <button onclick="analyzeGMBDescription()" style="margin-top:8px;padding:8px 16px;background:#0a5c36;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">🤖 AI Analyze Description</button>
+          <div id="gmb-desc-analysis" style="margin-top:10px;"></div>
+        </div>
         <div class="form-group">
           <label>GMB Place ID <span style="color:#888;font-weight:400;font-size:12px;">(one-time setup for 100% accuracy)</span></label>
           <input type="text" id="s-gmbPlaceId" placeholder="e.g. ChIJxfKa-NuQyzsRZo3TiDBGjdw">
@@ -2673,6 +2699,91 @@ async function runAIVisibilityCheck(){
   document.getElementById('aivisBtn').disabled=false;
 }
 
+async function analyzeGMBDescription(){
+  const desc = document.getElementById('s-gmbDescription')?.value.trim();
+  const industry = document.getElementById('s-industry')?.value.trim() || 'business';
+  const city = document.getElementById('s-city')?.value.trim() || 'India';
+  const targetAreas = document.getElementById('s-targetAreas')?.value.trim() || '';
+  const services = document.getElementById('s-services')?.value.trim() || '';
+  const gmbName = document.getElementById('s-gmbName')?.value.trim() || '';
+  const el = document.getElementById('gmb-desc-analysis');
+
+  if(!desc){ el.innerHTML='<div style="color:#e74c3c;font-size:13px;">Please paste your current GMB description first.</div>'; return; }
+
+  el.innerHTML='<div style="color:#0a5c36;font-size:13px;padding:10px;">🤖 Analyzing your GMB description...</div>';
+
+  const keys = await loadAIKeys();
+  const provider = keys.groq?'groq':keys.gemini?'gemini':keys.openai?'openai':keys.anthropic?'anthropic':null;
+  if(!provider){ el.innerHTML='<div style="color:#e74c3c;font-size:13px;">Add an AI API key in Settings first.</div>'; return; }
+
+  const prompt = 'You are a local SEO expert specializing in Google Business Profile optimization.
+
+'+
+    'BUSINESS: '+gmbName+'
+'+
+    'INDUSTRY: '+industry+'
+'+
+    'CITY: '+city+'
+'+
+    'TARGET AREAS: '+targetAreas+'
+'+
+    'SERVICES: '+services+'
+
+'+
+    'CURRENT GMB DESCRIPTION:
+'+desc+'
+
+'+
+    'Analyze this GMB description and provide:
+'+
+    '1. Score out of 10 with reason
+'+
+    '2. What is missing (keywords, areas, services)
+'+
+    '3. Three improved versions ready to copy-paste (max 750 chars each)
+'+
+    '4. Top 5 keywords that should be in the description
+
+'+
+    'Return ONLY JSON:
+'+
+    '{"score":7,"reason":"...","missing":["...","..."],"versions":["full version 1","full version 2","full version 3"],"keywords":["kw1","kw2","kw3","kw4","kw5"]}';
+
+  try {
+    const result = await callAI(provider, prompt, keys);
+    const clean = result.text.replace(/```json|```/g,'').trim();
+    const data = JSON.parse(clean);
+
+    const scoreColor = data.score>=8?'#2ecc71':data.score>=5?'#f39c12':'#e74c3c';
+    el.innerHTML =
+      '<div style="background:#f0fdf6;border:1.5px solid #d4f5e2;border-radius:12px;padding:16px;margin-top:8px;">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+          '<div style="font-size:28px;font-weight:800;color:'+scoreColor+';">'+data.score+'/10</div>' +
+          '<div style="font-size:13px;color:#555;">'+data.reason+'</div>' +
+        '</div>' +
+        '<div style="margin-bottom:12px;">' +
+          '<div style="font-size:12px;font-weight:700;color:#0a5c36;margin-bottom:6px;">❌ Missing from your description:</div>' +
+          (data.missing||[]).map(m=>'<span style="display:inline-block;background:#fff3f3;border:1px solid #e74c3c;color:#c0392b;border-radius:20px;padding:3px 10px;font-size:12px;margin:3px;">'+m+'</span>').join('') +
+        '</div>' +
+        '<div style="margin-bottom:12px;">' +
+          '<div style="font-size:12px;font-weight:700;color:#0a5c36;margin-bottom:6px;">🎯 Keywords to include:</div>' +
+          (data.keywords||[]).map(k=>'<span style="display:inline-block;background:#d4f5e2;color:#0a5c36;border-radius:20px;padding:3px 10px;font-size:12px;margin:3px;font-weight:600;">'+k+'</span>').join('') +
+        '</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#0a5c36;margin-bottom:8px;">✅ Improved Versions (copy-paste ready):</div>' +
+        (data.versions||[]).map((v,i)=>
+          '<div style="background:#fff;border:1.5px solid #d4f5e2;border-radius:8px;padding:12px;margin-bottom:8px;">' +
+            '<div style="font-size:11px;font-weight:700;color:#888;margin-bottom:6px;">VERSION '+(i+1)+' ('+v.length+' chars)</div>' +
+            '<div style="font-size:13px;color:#333;line-height:1.6;margin-bottom:8px;">'+v+'</div>' +
+            '<button onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);this.textContent='Copied! ✅';setTimeout(()=>this.textContent='📋 Copy',2000)" '+
+            'style="padding:6px 14px;background:#0a5c36;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">📋 Copy</button>' +
+          '</div>'
+        ).join('') +
+      '</div>';
+  } catch(e) {
+    el.innerHTML='<div style="color:#e74c3c;font-size:13px;">Error: '+e.message+'</div>';
+  }
+}
+
 async function loadCompSettings(){
   if(!currentUser||!currentCompanyId) return {};
   try {
@@ -2874,7 +2985,11 @@ async function loadCompanySettings(){
     if(doc.exists){const d=doc.data();
       const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
       setVal('s-companyName',d.name);setVal('s-website',d.website);setVal('s-gscProperty',d.gscProperty);
-      setVal('s-gmbName',d.gmbName);setVal('s-gmbAddress',d.gmbAddress);setVal('s-googlePlacesKey',d.googlePlacesKey);
+      setVal('s-industry',d.industry||'');setVal('s-city',d.city||'');
+      setVal('s-targetAreas',d.targetAreas||'');setVal('s-services',d.services||'');
+      setVal('s-gmbName',d.gmbName);setVal('s-gmbAddress',d.gmbAddress);
+      setVal('s-gmbDescription',d.gmbDescription||'');
+      setVal('s-googlePlacesKey',d.googlePlacesKey);
       setVal('s-gmbPlaceId',d.gmbPlaceId||'ChIJxfKa-NuQyzsRZo3TiDBGjdw');
       setVal('s-gmbLat',d.gmbLat||'17.4506074');setVal('s-gmbLng',d.gmbLng||'78.3624082');
       console.log('Settings loaded for',companyId);
@@ -2954,7 +3069,7 @@ async function confirmMigrate(){
 }
 
 async function saveCompanySettings(){
-  const data={name:document.getElementById('s-companyName').value.trim(),website:document.getElementById('s-website').value.trim(),gscProperty:document.getElementById('s-gscProperty').value.trim(),gmbName:document.getElementById('s-gmbName').value.trim(),gmbAddress:document.getElementById('s-gmbAddress').value.trim(),
+  const data={name:document.getElementById('s-companyName').value.trim(),website:document.getElementById('s-website').value.trim(),gscProperty:document.getElementById('s-gscProperty').value.trim(),industry:document.getElementById('s-industry')?.value.trim()||'',city:document.getElementById('s-city')?.value.trim()||'',targetAreas:document.getElementById('s-targetAreas')?.value.trim()||'',services:document.getElementById('s-services')?.value.trim()||'',gmbName:document.getElementById('s-gmbName').value.trim(),gmbAddress:document.getElementById('s-gmbAddress').value.trim(),gmbDescription:document.getElementById('s-gmbDescription')?.value.trim()||'',
       googlePlacesKey:document.getElementById('s-googlePlacesKey').value.trim(),
       gmbPlaceId:document.getElementById('s-gmbPlaceId').value.trim(),
       gmbLat:document.getElementById('s-gmbLat').value.trim(),
