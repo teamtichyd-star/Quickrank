@@ -2912,13 +2912,12 @@ async function loadDashboard(){
     const seen = new Set();
     const kwsDeduped = kws.filter(k=>{ if(seen.has(k.keyword)) return false; seen.add(k.keyword); return true; });
     window._dashKws = kwsDeduped;
-    const kws = kwsDeduped;
-    const total = kws.length;
-    const top3 = kws.filter(k=>k.currentRank && k.currentRank <= 3).length;
-    const top10 = kws.filter(k=>k.currentRank && k.currentRank > 3 && k.currentRank <= 10).length;
-    const top30 = kws.filter(k=>k.currentRank && k.currentRank > 10 && k.currentRank <= 30).length;
-    const beyond = kws.filter(k=>!k.currentRank || k.currentRank > 30).length;
-    const totalClicks = kws.reduce((s,k)=>s+(k.clicks||0),0);
+    const total = kwsDeduped.length;
+    const top3 = kwsDeduped.filter(k=>k.currentRank && k.currentRank <= 3).length;
+    const top10 = kwsDeduped.filter(k=>k.currentRank && k.currentRank > 3 && k.currentRank <= 10).length;
+    const top30 = kwsDeduped.filter(k=>k.currentRank && k.currentRank > 10 && k.currentRank <= 30).length;
+    const beyond = kwsDeduped.filter(k=>!k.currentRank || k.currentRank > 30).length;
+    const totalClicks = kwsDeduped.reduce((s,k)=>s+(k.clicks||0),0);
 
     document.getElementById('dash-kw-count').textContent = total;
     document.getElementById('dash-kw-top3').textContent = top3 + ' in Top 3';
@@ -2946,7 +2945,7 @@ async function loadDashboard(){
     }).join('');
 
     // Quick wins — pos 4-20
-    const quickWins = kws.filter(k=>k.currentRank && k.currentRank >= 4 && k.currentRank <= 20)
+    const quickWins = kwsDeduped.filter(k=>k.currentRank && k.currentRank >= 4 && k.currentRank <= 20)
       .sort((a,b)=>a.currentRank - b.currentRank).slice(0,5);
     const qwEl = document.getElementById('dash-quick-wins');
     if(quickWins.length){
@@ -2962,7 +2961,7 @@ async function loadDashboard(){
     }
 
     // Top keywords table
-    const topKws = kws.filter(k=>k.currentRank && k.currentRank < 999).sort((a,b)=>a.currentRank-b.currentRank).slice(0,8);
+    const topKws = kwsDeduped.filter(k=>k.currentRank && k.currentRank < 999).sort((a,b)=>a.currentRank-b.currentRank).slice(0,8);
     const tableEl = document.getElementById('dash-kw-table');
     if(topKws.length){
       tableEl.innerHTML = '<table style="width:100%;border-collapse:collapse;">'+
@@ -2987,7 +2986,7 @@ async function loadDashboard(){
     }
 
     // Website SEO score
-    const websiteScore = Math.round(Math.min(100, (top3/Math.max(total,1))*40 + (top10/Math.max(total,1))*30 + Math.min(total/20,1)*30));
+    const websiteScore = Math.round(Math.min(100, (top3/Math.max(kwsDeduped.length,1))*40 + (top10/Math.max(kwsDeduped.length,1))*30 + Math.min(kwsDeduped.length/20,1)*30));
     document.getElementById('dash-website-score').textContent = websiteScore;
 
     // Store for overall
