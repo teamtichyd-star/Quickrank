@@ -1591,7 +1591,7 @@ function loadKeywords(){
     .collection('keywords').orderBy('createdAt','desc')
     .onSnapshot(snap=>{
       keywords=snap.docs.map(d=>({id:d.id,...d.data()}));
-      renderKeywords(keywords);updateStats();updateRankTrackerStats(keywords);
+      renderKeywords(keywords);updateStats();
       if(document.getElementById('page-charts').style.display!=='none')renderChartsPage();
     });
 }
@@ -1605,6 +1605,8 @@ function renderKeywords(kwList){
     body.innerHTML=`<tr><td colspan="9"><div class="empty-state"><h3>No keywords yet</h3><p>Add keywords or sync Google Search Console</p></div></td></tr>`;
     return;
   }
+  // Update stat cards if visible
+  updateRankTrackerStats(kwList);
   body.innerHTML=kwList.map(k=>{
     const pos=k.position;
     const rankClass=!pos?'rank-none':pos<=3?'rank-top3':pos<=10?'rank-top10':pos<=20?'rank-top20':'rank-low';
@@ -3510,6 +3512,7 @@ function showPage(page,el){
   if(window.innerWidth<=768)closeSidebar();
   if(page==='settings'){loadCompanySettings();loadAIKeyStatuses();}
   if(page==='dashboard'){loadDashboard();}
+  if(page==='ranktracker'){if(typeof keywords!=='undefined' && keywords.length) renderKeywords(keywords);}
   if(page==='charts')renderChartsPage();
   if(page==='gsc'&&gscAccessToken&&gscDataFull.length)renderGSCTable(gscDataView);
   if(page==='watchdog') runWatchdog();
