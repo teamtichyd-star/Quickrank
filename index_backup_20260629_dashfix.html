@@ -2902,7 +2902,6 @@ async function loadDashboard(){
   try {
     const kwSnap = await db.collection('users').doc(user.uid).collection('companies').doc(companyId).collection('keywords').get();
     const kws = kwSnap.docs.map(d=>d.data());
-    window._dashKws = kws;
     const total = kws.length;
     const top3 = kws.filter(k=>k.currentRank && k.currentRank <= 3).length;
     const top10 = kws.filter(k=>k.currentRank && k.currentRank > 3 && k.currentRank <= 10).length;
