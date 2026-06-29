@@ -1592,7 +1592,7 @@ function loadKeywords(){
     .collection('keywords').orderBy('createdAt','desc')
     .onSnapshot(snap=>{
       keywords=snap.docs.map(d=>({id:d.id,...d.data()}));
-      renderKeywords(keywords);updateStats();
+      renderKeywords(keywords);updateStats();updateRankTrackerStats(keywords);
       if(document.getElementById('page-charts').style.display!=='none')renderChartsPage();
     });
 }
@@ -1609,17 +1609,21 @@ function renderKeywords(kwList){
   body.innerHTML=kwList.map(k=>{
     const pos=k.position;
     const rankClass=!pos?'rank-none':pos<=3?'rank-top3':pos<=10?'rank-top10':pos<=20?'rank-top20':'rank-low';
+    const posColor=getPosColor(pos);
+    const posLabel=pos?'#'+pos:'—';
     const change=k.change||0;
     const trendHtml=change===0?`<span class="trend-same">— same</span>`:change>0?`<span class="trend-up">▲${change}</span>`:`<span class="trend-down">▼${Math.abs(change)}</span>`;
     const urlDisplay=k.url?`<a href="${k.url}" target="_blank" style="color:#0a5c36;font-size:12px;text-decoration:none;">${(()=>{try{return new URL(k.url).pathname.slice(0,22)||'/';}catch(e){return k.url.slice(0,22);}})()}</a>`:'<span style="color:#ccc;font-size:12px;">—</span>';
     const clicks=k.clicks?`<span class="gsc-clicks">${k.clicks.toLocaleString()}</span>`:'<span style="color:#ccc;">—</span>';
     const impr=k.impressions?k.impressions.toLocaleString():'—';
     const ctr=k.ctr?`${(k.ctr*100).toFixed(1)}%`:'—';
+    const estTraffic=k.clicks?k.clicks:'—';
     const bestPos=k.bestPosition?`<span style="color:#0a5c36;font-weight:700;">#${k.bestPosition}</span>`:'—';
+    const oppBadge=(pos && pos>=4 && pos<=20)?'<span style="font-size:9px;background:#fff3cd;color:#b8860b;border:1px solid #ffc107;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:4px;">⚡ WIN</span>':'';
     return `<tr ${k.gscSynced?'class="gsc-kw-row-matched"':''}>
-      <td><div style="font-weight:600;color:#222;">${k.keyword}</div>${k.gscSynced?'<div style="font-size:10px;color:#1a73e8;font-weight:600;">🔗 GSC</div>':''}</td>
+      <td><div style="font-weight:600;color:#222;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">${k.keyword}${oppBadge}</div>${k.gscSynced?'<div style="font-size:10px;color:#1a73e8;font-weight:600;">🔗 GSC</div>':''}</td>
       <td>${urlDisplay}</td>
-      <td><span class="rank-badge ${rankClass}">${pos||'—'}</span></td>
+      <td><span style="background:${posColor};color:#fff;border-radius:8px;padding:4px 12px;font-weight:800;font-size:13px;display:inline-block;">${posLabel}</span></td>
       <td>${bestPos}</td>
       <td>${clicks}</td>
       <td style="font-size:12px;color:#888;">${impr}</td>
