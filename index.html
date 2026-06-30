@@ -2514,9 +2514,37 @@ function getBestKeywordUrl(keyword, fallbackUrl){
   return bestUrl;
 }
 
-function openAiPanelForKeyword(keyword, fallbackUrl, kwPosition){
+async function openAiPanelForKeyword(keyword, fallbackUrl, kwPosition){
   const bestUrl = getBestKeywordUrl(keyword, fallbackUrl);
   window._currentKwPosition = kwPosition || 0;
+
+  if(!window._currentKwPosition && typeof gscDataFull!=='undefined' && gscDataFull.length>0){
+    var _g = gscDataFull.find(function(k){ return k.keyword === keyword; });
+    if(_g && _g.position) window._currentKwPosition = Math.round(_g.position);
+  }
+
+  if(!window._currentKwPosition){
+    try{
+      var _user = firebase.auth().currentUser;
+      var _compId = getCurrentCompanyId();
+      if(_user && _compId){
+        var _snap = await firebase.firestore()
+          .collection('users').doc(_user.uid)
+          .collection('companies').doc(_compId)
+          .collection('keywords')
+          .where('keyword','==',keyword)
+          .limit(1)
+          .get();
+        if(!_snap.empty){
+          var _data = _snap.docs[0].data();
+          window._currentKwPosition = _data && _data.position ? Math.round(_data.position) : 0;
+        }
+      }
+    }catch(e){
+      console.warn('openAiPanelForKeyword position lookup failed', e);
+    }
+  }
+
   openAiPanel(keyword, bestUrl);
   if(!bestUrl){
     showToast('No ranking page URL found yet. Sync GSC or enter URL manually.', true);
