@@ -3457,9 +3457,15 @@ async function autoFindURLs(){
     const jinaUrl = 'https://r.jina.ai/' + website;
     const resp = await fetch(jinaUrl, {headers:{'Accept':'text/plain'}});
     const text = await resp.text();
-    // Extract all URLs from the fetched content
+    // Extract all URLs — filter out images and wp-content
     const urlMatches = text.match(/https?:\/\/[^\s\)"']+/g) || [];
-    siteLinks = [...new Set(urlMatches.filter(u=>u.includes(website.replace('https://','').replace('http://','').split('/')[0])))];
+    const domain = website.replace('https://','').replace('http://','').split('/')[0];
+    siteLinks = [...new Set(urlMatches.filter(u=>
+      u.includes(domain) &&
+      !u.includes('/wp-content/') &&
+      !u.includes('#') &&
+      !u.match(/\.(jpg|jpeg|png|gif|svg|webp|pdf|ico)$/i)
+    ))];
     console.log('Found site links:', siteLinks.length, siteLinks);
   } catch(e){
     console.log('Jina fetch error:', e);
@@ -3469,21 +3475,32 @@ async function autoFindURLs(){
   const kwSnap = await db.collection('users').doc(user.uid).collection('companies').doc(getCurrentCompanyId()).collection('keywords').get();
   const kws = kwSnap.docs.map(d=>({id:d.id,...d.data()}));
 
+  // Smart URL scorer — score each page URL against keyword words
+  function scoreUrl(kw, url){
+    const words = kw.toLowerCase().split(' ').filter(w=>w.length>2);
+    const slug = url.toLowerCase().replace(/https?:\/\/[^\/]+/,'');
+    let sc = 0;
+    words.forEach(w=>{ if(slug.includes(w)) sc+=2; });
+    if(slug.split('/').filter(s=>s).length > 1) sc+=1;
+    if(slug==='/'||slug==='') sc=0;
+    return sc;
+  }
+
   // Build modal HTML
   let rows = kws.map(k=>{
-    // Try to find best matching URL from site links
-    const kwWords = k.keyword.toLowerCase().split(' ').filter(w=>w.length>3);
     let bestUrl = k.url || '';
-    if(!bestUrl && siteLinks.length){
-      // Score each link by keyword word matches
-      let bestScore = 0;
+    let bestScore = 0;
+    let confidence = k.url ? 'saved' : 'none';
+    if(!k.url && siteLinks.length){
       siteLinks.forEach(link=>{
-        const linkLow = link.toLowerCase();
-        const score = kwWords.filter(w=>linkLow.includes(w)).length;
-        if(score > bestScore){ bestScore=score; bestUrl=link; }
+        const s = scoreUrl(k.keyword, link);
+        if(s > bestScore){ bestScore=s; bestUrl=link; }
       });
+      confidence = bestScore>=4?'high':bestScore>=2?'medium':'low';
       if(bestScore < 2) bestUrl = '';
     }
+    const confColor = confidence==='saved'?'#1a73e8':confidence==='high'?'#2ecc71':confidence==='medium'?'#f39c12':'#e74c3c';
+    const confLabel = confidence==='saved'?'✅ Already saved':confidence==='high'?'✅ High confidence':confidence==='medium'?'⚠ Medium — verify':'❌ No match — enter manually';
     return '<tr style="border-bottom:1px solid #f0f0f0;">'+
       '<td style="padding:8px 10px;font-size:13px;color:#333;font-weight:500;min-width:180px;">'+
         k.keyword+
