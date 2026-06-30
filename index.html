@@ -3622,6 +3622,64 @@ async function saveAllURLs(){
 }
 
 /* ══════════════════════════════
+   UNIVERSAL API CALLERS
+══════════════════════════════ */
+async function getApiKey(keyName){
+  const user = firebase.auth().currentUser;
+  if(!user) return '';
+  try {
+    const doc = await db.collection('users').doc(user.uid).collection('settings').doc('apis').get();
+    if(doc.exists) return doc.data()[keyName] || '';
+  } catch(e){}
+  return '';
+}
+
+async function fetchSERP(keyword, location){
+  const serperKey = await getApiKey('serperKey');
+  if(!serperKey) return null;
+  try {
+    const r = await fetch('https://google.serper.dev/search', {
+      method:'POST',
+      headers:{'X-API-KEY':serperKey, 'Content-Type':'application/json'},
+      body:JSON.stringify({
+        q: keyword,
+        location: location || 'Hyderabad, Telangana, India',
+        gl: 'in',
+        hl: 'en',
+        num: 10
+      })
+    });
+    const data = await r.json();
+    if(!data.organic) return null;
+
+    // Track usage
+    try {
+      const u = firebase.auth().currentUser;
+      const today = new Date().toISOString().slice(0,7); // YYYY-MM
+      await db.collection('users').doc(u.uid).collection('usage').doc(today).set({
+        serperCalls: firebase.firestore.FieldValue.increment(1),
+        lastCall: firebase.firestore.FieldValue.serverTimestamp()
+      }, {merge:true});
+    } catch(e){}
+
+    return {
+      organic: data.organic.slice(0,10).map(r=>({
+        position: r.position,
+        title: r.title,
+        link: r.link,
+        snippet: r.snippet
+      })),
+      peopleAlsoAsk: (data.peopleAlsoAsk||[]).slice(0,5).map(p=>p.question),
+      relatedSearches: (data.relatedSearches||[]).slice(0,5).map(r=>r.query),
+      featuredSnippet: data.answerBox || null
+    };
+  } catch(e){
+    console.log('Serper error:', e);
+    return null;
+  }
+}
+
+/* ══════════════════════════════
    UNIVERSAL API MANAGER
 ══════════════════════════════ */
 const UNIVERSAL_APIS = [
