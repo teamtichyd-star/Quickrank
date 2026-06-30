@@ -2396,9 +2396,61 @@ async function fetchViaJina(url){
     try{ hostname = new URL(url).hostname; }catch(e){}
     const internalLinks = allLinks.filter(l=>l.startsWith('/')||l.includes(hostname)).length;
     const externalLinks = allLinks.length - internalLinks;
+    // ALSO fetch raw HTML for meta description, canonical, hreflang etc Jina misses
+    let canonical = '', hreflang = [], httpsOk = url.startsWith('https://'), sitemap = false;
+    let rawHtml = '';
+    try {
+      const proxies = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
+      for(const proxy of proxies){
+        try {
+          const rawResp = await fetch(proxy + encodeURIComponent(url), {signal: AbortSignal.timeout(10000)});
+          rawHtml = await rawResp.text();
+          if(rawHtml && rawHtml.length > 500) break;
+        } catch(e){ continue; }
+      }
+    } catch(e){}
+
+    if(rawHtml){
+      // Extract meta description from raw HTML if Jina missed it
+      if(!metaDesc){
+        const mdMatch = rawHtml.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+                        rawHtml.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
+        if(mdMatch) metaDesc = mdMatch[1].trim();
+      }
+      // Title fallback
+      if(!title){
+        const tMatch = rawHtml.match(/<title>([^<]+)<\/title>/i);
+        if(tMatch) title = tMatch[1].trim();
+      }
+      // Canonical URL
+      const canMatch = rawHtml.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i);
+      if(canMatch) canonical = canMatch[1].trim();
+      // Hreflang
+      const hrefMatches = [...rawHtml.matchAll(/<link[^>]*rel=["']alternate["'][^>]*hreflang=["']([^"']+)["']/gi)];
+      hreflang = hrefMatches.map(m=>m[1]);
+      // Sitemap check
+      sitemap = rawHtml.includes('sitemap.xml') || rawHtml.includes('sitemap_index.xml');
+      // H1 fallback
+      if(h1s.length === 0){
+        const h1Matches = [...rawHtml.matchAll(/<h1[^>]*>([^<]+)<\/h1>/gi)];
+        h1Matches.forEach(m=>h1s.push(m[1].trim()));
+      }
+      // Images alt check
+      const imgMatches = [...rawHtml.matchAll(/<img[^>]+>/gi)];
+      const imgsNoAlt = imgMatches.filter(m=>!m[0].includes('alt=')).length;
+
+      return {title, titleLen:title.length, metaDesc, metaDescLen:metaDesc.length,
+        h1:h1s, h2:h2s, h3:h3s, wordCount, internalLinks, externalLinks,
+        bodyText:bodyText.slice(0,3000), images:imgMatches.length, imgsNoAlt:imgsNoAlt,
+        canonical, hreflang, httpsOk, sitemap,
+        perfScore:null, seoScore:null, lcp:'', cls:'', tbt:'', fcp:'', failedAudits:[],
+        source:'jina+html'};
+    }
+
     return {title, titleLen:title.length, metaDesc, metaDescLen:metaDesc.length,
       h1:h1s, h2:h2s, h3:h3s, wordCount, internalLinks, externalLinks,
       bodyText:bodyText.slice(0,3000), images:0, imgsNoAlt:0,
+      canonical:'', hreflang:[], httpsOk:url.startsWith('https://'), sitemap:false,
       perfScore:null, seoScore:null, lcp:'', cls:'', tbt:'', fcp:'', failedAudits:[],
       source:'jina'};
   }catch(e){ console.log('Jina error:',e); return null; }
