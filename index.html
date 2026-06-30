@@ -1474,6 +1474,19 @@ tr:hover td{background:#f9fffe;}
         <button class="btn-primary" onclick="saveAIKeys()">💾 Save All Keys</button>
         <div class="key-status-grid" id="keyStatusGrid" style="margin-top:16px;"></div>
       </div>
+
+      <!-- ═══ UNIVERSAL API MANAGER ═══ -->
+      <div class="settings-section">
+        <h3>🔌 Third-Party API Keys <span style="background:#a855f7;color:#fff;font-size:10px;padding:3px 8px;border-radius:5px;margin-left:8px;vertical-align:middle;">NEW</span></h3>
+        <p style="color:#666;font-size:13px;margin-bottom:16px;">Add API keys for SERP data, place lookups, scraping and more. Each user brings their own free-tier keys.</p>
+
+        <!-- API Provider Cards -->
+        <div id="universalApiCards" style="display:flex;flex-direction:column;gap:14px;margin-bottom:16px;"></div>
+
+        <button class="btn-primary" onclick="saveUniversalApiKeys()">💾 Save All API Keys</button>
+        <div id="universalApiStatus" style="margin-top:12px;font-size:12px;color:#888;"></div>
+      </div>
+
     </div>
 
   </div><!-- /main -->
@@ -3608,6 +3621,173 @@ async function saveAllURLs(){
   loadKeywords();
 }
 
+/* ══════════════════════════════
+   UNIVERSAL API MANAGER
+══════════════════════════════ */
+const UNIVERSAL_APIS = [
+  {
+    id:'googlePlacesKey', name:'Google Places API', icon:'📍',
+    desc:'GMB data, competitor businesses, reviews', color:'#4285f4',
+    signupUrl:'https://console.cloud.google.com/apis/credentials',
+    docUrl:'https://console.cloud.google.com/apis/library/places-backend.googleapis.com',
+    freeTier:'$200 free credit/month (~10,000 calls)',
+    placeholder:'AIza...'
+  },
+  {
+    id:'serperKey', name:'Serper.dev', icon:'🚀',
+    desc:'Real Google SERP results — top 10 rankings, featured snippets', color:'#7c3aed',
+    signupUrl:'https://serper.dev/signup',
+    docUrl:'https://serper.dev/api-key',
+    freeTier:'2,500 free searches/month',
+    placeholder:'paste your serper key'
+  },
+  {
+    id:'dataForSeoKey', name:'DataForSEO', icon:'📊',
+    desc:'Premium SERP + local pack + keyword research', color:'#10b981',
+    signupUrl:'https://dataforseo.com/register',
+    docUrl:'https://app.dataforseo.com/api-access',
+    freeTier:'$1 free trial — pay $0.0006/call after',
+    placeholder:'login:password'
+  },
+  {
+    id:'valueSerpKey', name:'ValueSERP', icon:'🔍',
+    desc:'Alternative SERP API with location targeting', color:'#f59e0b',
+    signupUrl:'https://app.valueserp.com/signup',
+    docUrl:'https://app.valueserp.com/manage-api-key',
+    freeTier:'100 free searches/month',
+    placeholder:'paste your value serp key'
+  },
+  {
+    id:'scrapingBeeKey', name:'ScrapingBee', icon:'🐝',
+    desc:'Scrape any website including JavaScript-rendered pages', color:'#facc15',
+    signupUrl:'https://app.scrapingbee.com/account/register',
+    docUrl:'https://app.scrapingbee.com/account/manage_api_key',
+    freeTier:'1,000 free scrapes/month',
+    placeholder:'paste your scrapingbee key'
+  },
+  {
+    id:'openPageRankKey', name:'Open PageRank', icon:'🌐',
+    desc:'Domain authority + backlink quality score (alternative to Moz)', color:'#ef4444',
+    signupUrl:'https://www.domcop.com/openpagerank/auth/signup',
+    docUrl:'https://www.domcop.com/openpagerank/keys',
+    freeTier:'1,000 calls/day FREE forever',
+    placeholder:'paste your openpagerank key'
+  }
+];
+
+async function renderUniversalApiCards(){
+  const container = document.getElementById('universalApiCards');
+  if(!container) return;
+  const user = firebase.auth().currentUser;
+  if(!user) return;
+
+  let savedKeys = {};
+  try {
+    const doc = await db.collection('users').doc(user.uid).collection('settings').doc('apis').get();
+    if(doc.exists) savedKeys = doc.data();
+  } catch(e){}
+
+  container.innerHTML = UNIVERSAL_APIS.map(api=>{
+    const currentVal = savedKeys[api.id] || '';
+    const hasKey = !!currentVal;
+    return '<div style="background:#fff;border:1.5px solid '+(hasKey?'#d4f5e2':'#e0e0e0')+';border-radius:12px;padding:16px;">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">'+
+        '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<div style="width:40px;height:40px;background:'+api.color+';color:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">'+api.icon+'</div>'+
+          '<div>'+
+            '<div style="font-weight:700;font-size:14px;color:#333;">'+api.name+'</div>'+
+            '<div style="font-size:11px;color:#888;">'+api.desc+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px;align-items:center;">'+
+          '<span id="ustatus-'+api.id+'" style="font-size:11px;padding:3px 8px;border-radius:4px;background:'+(hasKey?'#d4f5e2':'#f0f0f0')+';color:'+(hasKey?'#0a5c36':'#888')+';font-weight:600;">'+(hasKey?'✅ Saved':'❌ Empty')+'</span>'+
+          '<button onclick="testApi(\''+api.id+'\')" style="background:#1a73e8;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;">Test</button>'+
+        '</div>'+
+      '</div>'+
+      '<input type="password" id="uapi-'+api.id+'" value="'+currentVal+'" placeholder="'+api.placeholder+'" style="width:100%;padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;margin-bottom:8px;">'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'+
+        '<a href="'+api.signupUrl+'" target="_blank" style="background:'+api.color+';color:#fff;font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;text-decoration:none;">🔗 Sign Up Free</a>'+
+        '<a href="'+api.docUrl+'" target="_blank" style="background:#fff;border:1.5px solid '+api.color+';color:'+api.color+';font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;text-decoration:none;">🔑 Get API Key</a>'+
+        '<span style="font-size:11px;color:#666;margin-left:6px;">'+api.freeTier+'</span>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+async function saveUniversalApiKeys(){
+  const user = firebase.auth().currentUser;
+  if(!user) return;
+  const data = {};
+  UNIVERSAL_APIS.forEach(api=>{
+    const el = document.getElementById('uapi-'+api.id);
+    if(el) data[api.id] = el.value.trim();
+  });
+  data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+  try {
+    await db.collection('users').doc(user.uid).collection('settings').doc('apis').set(data, {merge:true});
+    document.getElementById('universalApiStatus').textContent = '✅ Saved at ' + new Date().toLocaleTimeString();
+    showToast('API keys saved ✅');
+    renderUniversalApiCards();
+  } catch(e){
+    document.getElementById('universalApiStatus').textContent = '❌ Save failed: ' + e.message;
+  }
+}
+
+async function testApi(apiId){
+  const el = document.getElementById('uapi-'+apiId);
+  const status = document.getElementById('ustatus-'+apiId);
+  if(!el || !el.value.trim()){
+    status.textContent = '❌ Empty';
+    status.style.background = '#fee2e2';
+    status.style.color = '#dc2626';
+    return;
+  }
+  status.textContent = '⏳ Testing...';
+  status.style.background = '#fef3c7';
+  status.style.color = '#92400e';
+
+  const key = el.value.trim();
+  let ok = false, msg = '';
+
+  try {
+    if(apiId === 'serperKey'){
+      const r = await fetch('https://google.serper.dev/search', {
+        method:'POST',
+        headers:{'X-API-KEY':key, 'Content-Type':'application/json'},
+        body:JSON.stringify({q:'test', num:1})
+      });
+      const d = await r.json();
+      ok = !!d.organic;
+      msg = ok ? 'Working' : (d.message || 'Invalid key');
+    }
+    else if(apiId === 'googlePlacesKey'){
+      const url = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=test&inputtype=textquery&fields=name&key='+key;
+      const r = await fetch('https://corsproxy.io/?'+encodeURIComponent(url));
+      const d = await r.json();
+      ok = d.status === 'OK' || d.status === 'ZERO_RESULTS';
+      msg = ok ? 'Working' : (d.error_message || d.status);
+    }
+    else if(apiId === 'openPageRankKey'){
+      const r = await fetch('https://openpagerank.com/api/v1.0/getPageRank?domains[]=google.com', {
+        headers:{'API-OPR':key}
+      });
+      const d = await r.json();
+      ok = d.status_code === 200;
+      msg = ok ? 'Working' : (d.error || 'Invalid key');
+    }
+    else {
+      ok = true;
+      msg = 'Saved (manual test needed)';
+    }
+  } catch(e){
+    msg = e.message;
+  }
+
+  status.textContent = ok ? '✅ '+msg : '❌ '+msg;
+  status.style.background = ok ? '#d4f5e2' : '#fee2e2';
+  status.style.color = ok ? '#0a5c36' : '#dc2626';
+}
+
 // Auto-open parent if child page is active
 function openParentIfChild(pageId){
   const childToParent = { ranktracker: 'ranktracker', local: 'ranktracker' };
@@ -3989,7 +4169,7 @@ function showPage(page,el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el)el.classList.add('active');
   if(window.innerWidth<=768)closeSidebar();
-  if(page==='settings'){loadCompanySettings();loadAIKeyStatuses();}
+  if(page==='settings'){loadCompanySettings();loadAIKeyStatuses();renderUniversalApiCards();}
   if(page==='dashboard'){loadDashboard();}
   if(page==='ranktracker'){if(typeof keywords!=='undefined' && keywords.length){renderKeywords(keywords);}else{loadKeywords();}}
   if(page==='charts')renderChartsPage();
