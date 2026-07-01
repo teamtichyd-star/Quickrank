@@ -1795,15 +1795,27 @@ async function checkLiveRank(kw, gscPos, btn) {
     }
     console.log('DEBUG calling serper with key:', serperKey ? serperKey.slice(0,8)+'...' : 'MISSING');
     console.log('DEBUG query:', kw + ' ' + city);
+
+    // Call 1 - keyword search for competitors
     var resp = await fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: kw + ' ' + city, gl: 'in', hl: 'en', num: 100 })
+      body: JSON.stringify({ q: kw + ' ' + city, gl: 'in', hl: 'en', num: 10 })
     });
     console.log('DEBUG serper status:', resp.status);
     var data = await resp.json();
     console.log('DEBUG serper keys:', Object.keys(data));
     console.log('DEBUG organic count:', (data.organic||[]).length);
+
+    // Call 2 - site: search to check if your domain ranks for this keyword
+    var resp2 = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: kw + ' site:' + targetDomain, gl: 'in', hl: 'en', num: 10 })
+    });
+    var data2 = await resp2.json();
+    var siteRankFound = (data2.organic || []).length > 0;
+    console.log('DEBUG site: search found:', siteRankFound, 'results:', (data2.organic||[]).length);
     var organicPos = null;
     var competitorsAbove = [];
     if (data.organic) {
@@ -1818,6 +1830,12 @@ async function checkLiveRank(kw, gscPos, btn) {
           competitorsAbove.push({ pos: idx + 1, title: item.title, domain: itemDomain });
         }
       });
+    }
+    // If not found in top 10 but site: search confirms domain has content for this keyword
+    // use GSC position as fallback
+    if (organicPos === null && siteRankFound) {
+      organicPos = gscPos || 'Beyond top 10';
+      console.log('DEBUG using GSC fallback pos:', organicPos);
     }
     console.log('DEBUG organicPos:', organicPos);
     var mapPos = null;
@@ -1847,7 +1865,7 @@ async function checkLiveRank(kw, gscPos, btn) {
         });
       }
     }
-    var organicLabel = organicPos ? '#' + organicPos : 'Not in top 20';
+    var organicLabel = organicPos ? (typeof organicPos === 'number' ? '#' + organicPos : organicPos) : 'Not in top 10';
     var mapLabel = mapData.length === 0 ? 'No Map Pack' : (mapPos ? '#' + mapPos : 'Not found');
     var gscLabel = gscPos ? '#' + gscPos : '-';
     var compAboveHtml = '';
