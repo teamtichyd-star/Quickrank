@@ -2853,7 +2853,56 @@ ${pageData.bodyText?pageData.bodyText.slice(0,800):'Not available'}`;
   const modes={
     general:`STRICT INSTRUCTIONS - READ BEFORE ANYTHING ELSE:\n1. GMB IS ALREADY SET UP - DO NOT say claim or create GMB under any circumstances\n2. Current GSC rank is provided in VERIFIED DATA above - use that exact number\n3. Find the business website in SERP results to confirm rank - never assume #1\n4. Only flag issues that are confirmed in the audit data\n\nYou are an expert SEO consultant. Analyze this SPECIFIC situation and give SPECIFIC fixes (not generic advice).\n\nBUSINESS CONTEXT:\n- Business: ${compSettings?compSettings.name:'the business'}\n- City: ${compSettings?compSettings.city:''}\n- Industry: ${compSettings?compSettings.industry:''}\n- Services: ${compSettings?compSettings.services:''}\n- Target Areas: ${compSettings?compSettings.targetAreas:''}\n- GMB Reviews: ${compSettings?compSettings.gmbReviews:'?'} reviews, ${compSettings?compSettings.gmbRating:'?'} stars\n\nKeyword: "${keyword}"\n${pp}${gscContext}\n${competitorData?'\n=== REAL GOOGLE DATA (USE THIS!) ===\n'+competitorData+'\n=== END REAL DATA ===\n':''}\n\nSTOP! BEFORE WRITING ANYTHING, YOU MUST:\n1. Read the REAL GOOGLE SEARCH RESULTS section above carefully\n2. NAME each competitor URL specifically (e.g. "Justdial at #1")\n3. Compare their titles to yours\n4. Quote their snippets and explain what they cover that you don't\n5. Reference People Also Ask questions as content gaps\n\nMANDATORY INSTRUCTIONS:\n1. If REAL GOOGLE DATA is provided above, you MUST reference specific competitor URLs and titles from the TOP 10 results\n2. You MUST analyze the PEOPLE ALSO ASK questions and suggest adding them as page sections\n3. You MUST compare your page against actual ranking competitors by name\n4. Use specific numbers from the audit data — position, word count, title length, CTR\n5. Give exact copy-paste ready text — not generic advice\n\n**Assessment**\n(specific assessment citing real numbers — position, word count, title length, CTR)\n\n**Top 5 Quick Wins** (copy-paste ready)\n1. (exact fix — e.g. exact title tag text to use)\n2. 3. 4. 5.\n\n**Content Recommendations**\n1. (specific section to add with suggested heading and 2-3 bullet points of what to write)\n2. 3.\n\n**Technical Issues**\n1. (specific fix based on audit numbers)\n2. 3.\n\n**Local SEO Actions**\n1. (specific local action for ${compSettings?compSettings.city:''})\n2. 3.\n\nSEO_SCORE:[0-100] CRITICAL_ISSUES:[n]`,
 
-    local:`STRICT RULES - FOLLOW EXACTLY:\n1. GMB IS ALREADY CLAIMED AND ACTIVE - NEVER say claim GMB, create GMB, or set up GMB\n2. Business already has \${compSettings?compSettings.gmbReviews:'17'} reviews at \${compSettings?compSettings.gmbRating:'4.5'} stars - NEVER say get more reviews as first step\n3. DO NOT suggest IndiaMART or JustDial listing as first priority - focus on Google\n4. Use EXACT business name, city, and services from context below\n5. Give SPECIFIC actions not generic SEO theory\n\nYou are a Local SEO expert for Hyderabad, India.\n\nVERIFIED BUSINESS DATA:\n- Business: \${compSettings?compSettings.name:'Turnkey Interior Contractors'}\n- City: \${compSettings?compSettings.city:'Hyderabad'}\n- Industry: \${compSettings?compSettings.industry:'Interior Contractors'}\n- Services: \${compSettings?compSettings.services:''}\n- Target Areas: \${compSettings?compSettings.targetAreas:''}\n- GMB Status: ACTIVE AND VERIFIED\n- GMB Reviews: \${compSettings?compSettings.gmbReviews:'17'} reviews\n- GMB Rating: \${compSettings?compSettings.gmbRating:'4.5'} stars\n- Website: \${compSettings?compSettings.website:''}\n- Current GSC Rank: \${window._currentKwPosition?'#'+window._currentKwPosition:'see below'}\n\nKeyword: "\${keyword}"\n\${pp}\${gscContext}\n\n**GMB Profile Improvements** (specific fields to update RIGHT NOW)\n1-5. (exact text to add/change in GMB dashboard - name specific fields like Description, Services, Posts, Photos, Q&A)\n\n**Map Pack Strategy** (to rank in top 3 map pack for this keyword)\n1-5. (specific steps referencing the keyword and city areas)\n\n**Local Citations** (beyond what is already done)\n1-5. (specific Indian directories not yet mentioned, with exact category to list under)\n\n**Location Content** (exact content to add to website for local SEO)\n1-5. (specific pages or sections to create with exact heading suggestions)\n\n**Review Campaign** (to improve from \${compSettings?compSettings.gmbReviews:'17'} reviews)\n(exact WhatsApp/SMS template to send to past clients to get more reviews)\n\nSEO_SCORE:[0-100] CRITICAL_ISSUES:[n]`,
+    local:(()=>{
+      const _name=compSettings?compSettings.name:'the business';
+      const _city=compSettings?compSettings.city:'Hyderabad';
+      const _industry=compSettings?compSettings.industry:'Interior Contractors';
+      const _services=compSettings?compSettings.services:'';
+      const _areas=compSettings?compSettings.targetAreas:'';
+      const _rev=compSettings?compSettings.gmbReviews:'17';
+      const _rat=compSettings?compSettings.gmbRating:'4.5';
+      const _site=compSettings?compSettings.website:'';
+      const _pos=window._currentKwPosition?'#'+window._currentKwPosition:'check GSC data below';
+      return `STRICT RULES - FOLLOW EXACTLY:
+1. GMB IS ALREADY CLAIMED AND ACTIVE - NEVER say claim GMB, create GMB, or set up GMB
+2. Business already has ${_rev} reviews at ${_rat} stars - NEVER say get more reviews as first priority
+3. DO NOT suggest IndiaMART or JustDial as first action - they are already listed
+4. Use EXACT business name, city, and services from context below
+5. Give SPECIFIC actions - not generic SEO theory
+
+You are a Local SEO expert for Hyderabad, India.
+
+VERIFIED BUSINESS DATA (DO NOT CONTRADICT THIS):
+- Business Name: ${_name}
+- City: ${_city}
+- Industry: ${_industry}
+- Services: ${_services}
+- Target Areas: ${_areas}
+- GMB Status: ACTIVE AND VERIFIED (already claimed)
+- GMB Reviews: ${_rev} reviews (already have these - do not say get reviews as step 1)
+- GMB Rating: ${_rat} stars
+- Website: ${_site}
+- Current GSC Rank: ${_pos}
+
+Keyword: "${keyword}"
+${pp}${gscContext}
+
+**GMB Profile Improvements** (specific fields to update RIGHT NOW in GMB dashboard)
+1-5. (name exact GMB fields: Business Description, Services section, Posts, Photos, Q&A - give exact text to add)
+
+**Map Pack Strategy** (specific steps to rank in top 3 map pack for this keyword in ${_city})
+1-5. (reference exact keyword, areas like Madhapur, Gachibowli, Banjara Hills, HITEC City)
+
+**Local Citations** (specific directories beyond Google - only suggest ones not already obvious)
+1-5. (name exact directory, exact category to list under, exact URL to submit)
+
+**Location Content** (exact content to add to website)
+1-5. (specific page or section with exact H2 heading text to use)
+
+**Review Campaign** (to grow from ${_rev} reviews to 50+)
+Write exact WhatsApp message template a staff member can copy-paste to send past clients.
+
+SEO_SCORE:[0-100] CRITICAL_ISSUES:[n]`;})(),
 
     content:`You are a Content SEO expert. Analyze the ACTUAL content data provided.\n\nKeyword: "${keyword}"\n${pp}${gscContext}\n\nBased on the audit data, give SPECIFIC content fixes:\n\n**Content Gaps**\n1-5. (specific missing topics)\n\n**Ideal Word Count**\n(exact number with reasoning)\n\n**Semantic Keywords**\n(10 exact LSI keywords to include)\n\n**Exact Content Structure**\nH1: (exact suggested H1)\nH2s: (list exact H2 headings)\n\n**Featured Snippet**\n(exact content to target snippet)\n\nSEO_SCORE:[0-100] CRITICAL_ISSUES:[n]`,
 
