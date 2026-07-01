@@ -6427,15 +6427,41 @@ async function addSelectedKeywords() {
   const companyId = currentCompanyId || getCurrentCompanyId();
   const btn = document.querySelector('button[onclick="addSelectedKeywords()"]');
   btn.disabled = true; btn.textContent = 'Adding...';
+  let addedCount = 0;
   for (const kw of selected) {
-    await db.collection('users').doc(currentUser.uid).collection('companies').doc(companyId).collection('locationKeywords').add({
-      keyword: kw, currentRank: 99, previousRank: 99, lastUpdated: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    try {
+      // 1. Add to Website Keywords (Rank Tracker)
+      const ref = await db.collection('users').doc(currentUser.uid)
+        .collection('companies').doc(companyId)
+        .collection('keywords').add({
+          keyword: kw,
+          url: '',
+          position: null,
+          change: 0,
+          clicks: 0,
+          impressions: 0,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      // 2. Auto-sync to Location Keywords using same doc ID
+      await db.collection('users').doc(currentUser.uid)
+        .collection('companies').doc(companyId)
+        .collection('locationKeywords').doc(ref.id).set({
+          keyword: kw,
+          currentRank: 99,
+          previousRank: 99,
+          lastUpdated: 0,
+          addedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      addedCount++;
+    } catch(e) {
+      console.warn('Failed to add keyword:', kw, e);
+    }
   }
   btn.disabled = false; btn.textContent = '➕ Add Selected';
   closeKeywordSuggest();
+  if (typeof loadKeywords === 'function') await loadKeywords();
   if (typeof loadLocationKeywords === 'function') await loadLocationKeywords();
-  showToast('Added ' + selected.length + ' keywords');
+  showToast('Added ' + addedCount + ' keywords to Website & Locations ✅');
 }
 
 
