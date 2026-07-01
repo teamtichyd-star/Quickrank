@@ -6463,11 +6463,6 @@ async function addSelectedKeywords() {
   if (typeof loadLocationKeywords === 'function') await loadLocationKeywords();
   showToast('Added ' + addedCount + ' keywords to Website & Locations ✅');
 }
-
-
-
-
-
 async function checkLocationLiveRank(kw, currentRank, btn) {
   var origHtml = btn.innerHTML;
   btn.innerHTML = 'Checking...';
@@ -6483,10 +6478,7 @@ async function checkLocationLiveRank(kw, currentRank, btn) {
     var q = (kw || '').trim();
     if (city && q.toLowerCase().indexOf(city.toLowerCase()) === -1) q = q + ' ' + city;
     var serperKey = await getApiKey('serperKey');
-    if (!serperKey) {
-      alert('Serper API key not set. Go to Settings > API Manager.');
-      btn.innerHTML = origHtml; btn.disabled = false; return;
-    }
+    if (!serperKey) { alert('Serper API key not set. Go to Settings > API Manager.'); btn.innerHTML = origHtml; btn.disabled = false; return; }
     var mapResp = await fetch('https://google.serper.dev/maps', {
       method: 'POST',
       headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
@@ -6553,6 +6545,7 @@ async function checkLocationLiveRank(kw, currentRank, btn) {
     btn.disabled = false;
   }
 }
+
 </script>
 
 <!-- ═══════════════ KEYWORD SUGGEST MODAL (Phase 14C) ═══════════════ -->
