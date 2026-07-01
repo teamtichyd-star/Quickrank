@@ -1810,6 +1810,7 @@ async function checkLiveRank(kw, gscPos, btn) {
       data.organic.forEach(function(item, idx) {
         var itemLink = (item.link || '').toLowerCase();
         var isMatch = itemLink.includes(targetDomain);
+        console.log('DEBUG organic #'+(idx+1)+' | match:'+isMatch+' | '+itemLink);
         if (isMatch && organicPos === null) {
           organicPos = idx + 1;
         } else if (organicPos === null) {
@@ -1818,6 +1819,7 @@ async function checkLiveRank(kw, gscPos, btn) {
         }
       });
     }
+    console.log('DEBUG organicPos:', organicPos);
     var mapPos = null;
     var mapCompetitors = [];
     var mapData = data.localResults || data.local_results || data.places || [];
