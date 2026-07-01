@@ -6467,6 +6467,92 @@ async function addSelectedKeywords() {
 
 
 
+
+async function checkLocationLiveRank(kw, currentRank, btn) {
+  var origHtml = btn.innerHTML;
+  btn.innerHTML = 'Checking...';
+  btn.disabled = true;
+  try {
+    var comp = await loadCompSettings();
+    var city = (comp.city || 'Hyderabad').trim();
+    var website = (comp.website || '').toLowerCase().trim();
+    if (website.indexOf('https://') === 0) website = website.slice(8);
+    if (website.indexOf('http://') === 0) website = website.slice(7);
+    if (website.indexOf('www.') === 0) website = website.slice(4);
+    website = website.split('/')[0];
+    var q = (kw || '').trim();
+    if (city && q.toLowerCase().indexOf(city.toLowerCase()) === -1) q = q + ' ' + city;
+    var serperKey = await getApiKey('serperKey');
+    if (!serperKey) {
+      alert('Serper API key not set. Go to Settings > API Manager.');
+      btn.innerHTML = origHtml; btn.disabled = false; return;
+    }
+    var mapResp = await fetch('https://google.serper.dev/maps', {
+      method: 'POST',
+      headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: q, gl: 'in', hl: 'en' })
+    });
+    var mapData = await mapResp.json();
+    var places = Array.isArray(mapData.places) ? mapData.places : [];
+    var mapPos = null;
+    var mapAbove = [];
+    places.forEach(function(item, idx) {
+      var t = (item.title || '').toLowerCase();
+      var site = ((item.website || item.link || '') + '').toLowerCase();
+      var siteDomain = site.replace('https://','').replace('http://','').replace('www.','').split('/')[0];
+      var isMine = false;
+      if ((comp.name || '').trim()) isMine = t.indexOf((comp.name || '').toLowerCase()) !== -1;
+      if (!isMine && website) isMine = (siteDomain === website) || (site.indexOf(website) !== -1);
+      if (mapPos === null && isMine) { mapPos = idx + 1; }
+      else if (mapPos === null) { mapAbove.push({ pos: idx + 1, title: item.title || 'Result', website: siteDomain, rating: item.rating, reviews: item.ratingCount }); }
+    });
+    var savedLabel = currentRank && currentRank < 99 ? '#' + currentRank : 'Not tracked';
+    var liveLabel = mapPos ? '#' + mapPos : 'Not in top 20';
+    var aboveHtml = '';
+    if (mapPos === 1) {
+      aboveHtml = '<div style="color:#2ecc71;font-size:12px;padding:8px 0;">You are #1 in Google Maps!</div>';
+    } else if (mapAbove.length) {
+      mapAbove.slice(0,5).forEach(function(c) {
+        aboveHtml += '<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:12px;">'
+          + '<span style="background:#e67e22;color:#fff;border-radius:4px;padding:1px 6px;font-size:11px;margin-right:6px;">#' + c.pos + '</span>'
+          + c.title
+          + (c.rating ? '<span style="color:#f39c12;margin-left:6px;">★ ' + c.rating + (c.reviews ? ' (' + c.reviews + ')' : '') + '</span>' : '')
+          + (c.website ? '<div style="font-size:10px;color:#888;">' + c.website + '</div>' : '')
+          + '</div>';
+      });
+    } else if (!mapPos) {
+      aboveHtml = '<div style="color:#888;font-size:12px;padding:8px 0;">Your business was not found in top 20 Google Maps results.</div>';
+    } else {
+      aboveHtml = '<div style="color:#888;font-size:12px;padding:8px 0;">No businesses above you in Maps results.</div>';
+    }
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:480px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+    box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">'
+      + '<div style="font-size:16px;font-weight:800;color:#0a5c36;">📍 Maps Live Rank Check</div>'
+      + '<button id="locLiveClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:#888;">x</button>'
+      + '</div>'
+      + '<div style="background:#f0fdf6;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;font-weight:600;color:#0a5c36;">' + kw + ' — ' + city + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">'
+      + '<div style="background:#d4f5e2;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:10px;color:#666;margin-bottom:6px;">SAVED RANK</div><div style="font-size:26px;font-weight:900;color:#0a5c36;">' + savedLabel + '</div></div>'
+      + '<div style="background:#fff3e0;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:10px;color:#666;margin-bottom:6px;">LIVE MAPS TODAY</div><div style="font-size:26px;font-weight:900;color:#e67e22;">' + liveLabel + '</div></div>'
+      + '</div>'
+      + '<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#333;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #f0f0f0;">Businesses Above You in Google Maps</div>' + aboveHtml + '</div>'
+      + '<div style="margin-top:12px;padding:10px;background:#fffbeb;border-radius:8px;font-size:11px;color:#92400e;">Live rank is a single snapshot and may vary by location and time.</div>'
+      + '<div style="margin-top:10px;text-align:center;font-size:10px;color:#aaa;">Checked: ' + new Date().toLocaleString() + '</div>';
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    document.getElementById('locLiveClose').onclick = function() { overlay.remove(); };
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  } catch(err) {
+    console.error('checkLocationLiveRank error:', err);
+    alert('Live rank check failed: ' + err.message);
+  } finally {
+    btn.innerHTML = origHtml;
+    btn.disabled = false;
+  }
+}
 </script>
 
 <!-- ═══════════════ KEYWORD SUGGEST MODAL (Phase 14C) ═══════════════ -->
