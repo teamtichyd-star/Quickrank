@@ -100,7 +100,7 @@
 .sidebar.collapsed .nav-child{padding-left:0 !important;justify-content:center;}
 .sidebar-toggle{position:absolute;top:8px;right:-14px;width:28px;height:28px;background:#fff;border:1.5px solid #d4f5e2;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:901;box-shadow:0 2px 6px rgba(0,0,0,0.1);transition:transform 0.3s;}
 .sidebar-toggle:hover{background:#f0fdf6;}
-.sidebar-toggle svg{width:14px;height:14px;fill:#0a5c36;transition:transform 0.3s;}
+.sidebar-toggle svg{width:14px;height:14px;fill:#0a5c36;transition:transform 0.3s;}.sidebar.collapsed .sidebar-toggle svg{transform:rotate(180deg);}
 .sidebar.collapsed + .main,.sidebar.collapsed ~ .main{margin-left:var(--sidebar-collapsed);}
 .main{margin-left:var(--sidebar-width);margin-top:var(--topbar-height);padding:28px;min-height:calc(100vh - var(--topbar-height));}
 .page-header{margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
@@ -379,7 +379,7 @@ tr:hover td{background:#f9fffe;}
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
   <!-- SIDEBAR -->
-  <div class="sidebar" id="sidebar"><div class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></div>
+  <div class="sidebar" id="sidebar"><div class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></div>
     <div class="sidebar-section">Main</div>
 
     <!-- Rank Tracker collapsible parent -->
@@ -630,7 +630,7 @@ tr:hover td{background:#f9fffe;}
             <button class="add-btn" onclick="openAddKeyword()">+ Add</button>
           </div>
         </div>
-        <div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;border:1.5px solid #d4f5e2;">
           <table>
             <thead>
               <tr>
@@ -819,7 +819,7 @@ tr:hover td{background:#f9fffe;}
               <button class="add-btn" style="background:linear-gradient(135deg,#1a73e8,#4285f4);" onclick="importAllUnmatched()">⬇️ Import Untracked</button>
             </div>
           </div>
-          <div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+          <div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;border:1.5px solid #d4f5e2;">
             <table>
               <thead>
                 <tr>
@@ -844,7 +844,7 @@ tr:hover td{background:#f9fffe;}
             <button style="padding:5px 12px;background:#fff3cd;border:1.5px solid #f39c12;border-radius:7px;color:#856404;font-size:12px;font-weight:600;cursor:pointer;" onclick="importAllUnmatched()">Import All</button>
           </div>
           <div class="table-card">
-            <div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;border:1.5px solid #d4f5e2;">
               <table>
                 <thead><tr><th>Keyword</th><th>Position</th><th>Clicks</th><th>Impressions</th><th>Action</th></tr></thead>
                 <tbody id="gscUnmatchedBody"></tbody>
@@ -4556,6 +4556,24 @@ function showPage(page,el){
   if(page==='gsc'&&gscAccessToken&&gscDataFull.length)renderGSCTable(gscDataView);
   if(page==='watchdog') runWatchdog();
 }
+
+function toggleSidebarCollapse(){
+  var sb=document.getElementById('sidebar');
+  if(!sb) return;
+  sb.classList.toggle('collapsed');
+  try{
+    localStorage.setItem('quickrank_sidebar_collapsed', sb.classList.contains('collapsed') ? '1' : '0');
+  }catch(e){}
+}
+document.addEventListener('DOMContentLoaded', function(){
+  try{
+    var sb=document.getElementById('sidebar');
+    if(sb && localStorage.getItem('quickrank_sidebar_collapsed')==='1'){
+      sb.classList.add('collapsed');
+    }
+  }catch(e){}
+});
+
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open');}
 let competitorData = [];
 let myBusinessData = null;
