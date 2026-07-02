@@ -194,3 +194,83 @@ Find function: grep -n "functionName" /Users/haritalla/Desktop/quickrank/index.h
 - State saved in localStorage (quickrank_sidebar_collapsed)
 - Auto-restores collapsed state on page reload
 - Main content margin adjusts automatically
+
+## Phase 26 — Locations Live Rank (COMPLETED 2 Jul 2026)
+- Added 🔴 Live button to every row in Locations keyword table
+- Uses Serper /maps to check Google Maps position live
+- Shows Saved Rank vs Live Maps Today
+- Shows businesses above you with ratings
+
+## Phase 27 — Intent + Opportunity Badges (COMPLETED 2 Jul 2026)
+- Intent chips T/C/I on every keyword (green/orange/yellow)
+- Opportunity badges: 👑 Defend / 🔥 Quick Win / 🎯 Potential / 📉 Recover
+- Rule-based intent detection (no AI cost)
+- Badge logic:
+  - Recover = dropped 3+ positions
+  - Defend = position 1-3
+  - Quick Win = position 4-20
+  - Potential = volume 100+ AND not top 3
+- Clean table: Keyword sticky left, Actions sticky right, horizontal scroll
+- Columns: Keyword | URL | Pos | Vol | Clicks | CTR | Actions | Type | Impr
+- Removed: filter bar, Best Ever, Trend, Sparkline, Update button
+- Compact icon-only action buttons
+
+## Phase 27B — Collapsible Sidebar (COMPLETED 2 Jul 2026)
+- Round toggle button on sidebar edge
+- Collapses to icon-only mode (55px wide)
+- State saved in localStorage (quickrank_sidebar_collapsed)
+- Auto-restores on page reload
+- Function: toggleSidebarCollapse()
+
+## Phase 27C — Dashboard Baskets (COMPLETED 2 Jul 2026)
+- Replaced Quick Wins + Top Keywords sections with 4 priority baskets:
+  - 📉 Recover First (red border)
+  - 👑 Defend Top 3 (purple border)
+  - 🔥 Quick Wins (orange border)
+  - 🎯 Potential High Demand (blue border)
+- Each basket shows top 5 keywords with:
+  - Position badge
+  - Keyword + intent chip
+  - Vol/Impr fallback
+  - LIVE button (checks Serper immediately)
+- Added Intent Breakdown widget (T/C/I count)
+- Click keyword in basket → jumps to Rank Tracker + highlights row yellow 2s
+- Function: jumpToKeyword(kw)
+
+## Key Functions Added Phase 24-27C
+- checkLiveRank(kw, gscPos, btn) — website live rank popup
+- checkLocationLiveRank(kw, currentRank, btn) — maps live rank popup
+- getKeywordIntent(kw) — returns T/C/I based on rules
+- getIntentChip(intent) — returns colored HTML chip
+- getOpportunityBadge(pos, change, volume) — returns {key, html} for badges
+- getSparkline(history) — SVG sparkline (currently unused after cleanup)
+- setKwFilter(type, val) — filter table (currently unused after cleanup)
+- toggleSidebarCollapse() — desktop sidebar collapse
+- jumpToKeyword(kw) — navigate to Rank Tracker + scroll to keyword row
+
+## Current Status
+- File: 6600+ lines
+- Last commit: dashboard baskets + click-to-jump feature working
+- Everything working
+- Ready for Phase 28
+
+## Next Phase Plan
+### Phase 28A — Google Ads CSV Import (DO FIRST)
+- Import CSV from Google Ads Keyword Planner
+- Extract: keyword, monthly volume, competition, CPC
+- Attach volume to matching keywords in Firebase
+- Update Vol column in rank tracker with real data
+- Update Potential basket to use real volume (not impressions fallback)
+
+### Phase 28B — Page-Level AI (DO AFTER 28A)
+- New "🧠 Page AI" button per URL
+- Groups all keywords ranking on same URL
+- Identifies primary keyword by volume + T intent
+- Gives ONE unified recommendation covering all keywords
+- Suggests NEW page URLs for high-volume keywords not fitting current page
+- Example output: "office turnkey interiors (vol 301) needs its own page /services/office-turnkey/"
+
+### Phase 28C — Optional Cleanups
+- Locations table button style consistency
+- Sidebar submenu behavior check when collapsed
+- Mobile responsive testing
