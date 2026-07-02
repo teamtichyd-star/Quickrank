@@ -94,7 +94,10 @@
 .sidebar.collapsed .sidebar-section{display:none;}
 .sidebar.collapsed .nav-parent span,.sidebar.collapsed .nav-badge,.sidebar.collapsed .nav-arrow{display:none;}
 .sidebar.collapsed .nav-item span,.sidebar.collapsed .nav-item .nav-badge{display:none;}
-.sidebar.collapsed .nav-parent{padding:11px 0;justify-content:center;font-size:0;}.sidebar.collapsed .nav-item{font-size:0;}
+.sidebar.collapsed .nav-parent,.sidebar.collapsed .nav-item{padding:11px 0 !important;justify-content:center !important;font-size:0 !important;text-indent:-9999px;overflow:hidden;}
+.sidebar.collapsed .nav-parent svg,.sidebar.collapsed .nav-item svg{text-indent:0;font-size:18px;}
+.sidebar.collapsed .nav-parent *:not(svg):not(path),.sidebar.collapsed .nav-item *:not(svg):not(path){display:none !important;}
+.sidebar.collapsed .sidebar-section{display:none !important;}
 .sidebar.collapsed .nav-item{padding:11px 0;justify-content:center;gap:0;}.sidebar.collapsed .nav-item svg,.sidebar.collapsed .nav-parent svg:first-child{margin:0 auto;}
 .sidebar.collapsed .nav-children{max-height:200px !important;}
 .sidebar.collapsed .nav-child{padding-left:0 !important;justify-content:center;}
