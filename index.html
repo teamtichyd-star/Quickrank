@@ -7584,7 +7584,8 @@ async function runAI(){
               url: dd.url||''
             };
           });
-          console.log('runAI: loaded gscDataFull from Firebase:', window.gscDataFull.length);
+          gscDataFull = window.gscDataFull;
+          console.log('runAI: loaded gscDataFull from Firebase:', gscDataFull.length);
         }
       }catch(gscErr){
         console.warn('runAI: could not load gscDataFull', gscErr);
