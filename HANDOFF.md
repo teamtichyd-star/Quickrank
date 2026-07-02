@@ -274,3 +274,38 @@ Find function: grep -n "functionName" /Users/haritalla/Desktop/quickrank/index.h
 - Locations table button style consistency
 - Sidebar submenu behavior check when collapsed
 - Mobile responsive testing
+
+## Phase 28A — Google Ads CSV Import (COMPLETED 2 Jul 2026)
+- Added Planner CSV import in Keyword Suggestions modal
+- Supports Google Keyword Planner export CSV
+- Fixed UTF-16 CSV parsing from Google exports
+- Detects header row automatically even with title/date lines above
+- Extracts:
+  - keyword
+  - avg. monthly searches
+  - competition
+  - top of page bid low/high
+- Planner tab now shows imported keywords in list
+- Added search box for fast filtering
+- Added sortable headers:
+  - Keyword
+  - Volume
+  - Competition
+- Clicking column header toggles ascending / descending
+- Add Selected now supports planner-imported keywords with volume
+- Volume data can be synced into Firebase keyword docs
+- Rank Tracker Vol column can now use real planner volume
+- Potential basket can now use real volume instead of impressions fallback
+
+## Key Functions Added Phase 28A
+- parsePlannerCsv() — parses UTF-16 Google Keyword Planner CSV
+- renderPlannerList(data) — renders planner keyword list with sort/search
+- sortPlannerCol(col) — toggles asc/desc sort on header click
+- filterPlannerList() — live search filter in planner tab
+- syncPlannerVolumeToExisting() — updates existing Firebase keywords with planner volume/CPC data
+
+## Current Status
+- File: 7000+ lines
+- Last commit: Phase 28A complete
+- Everything working
+- Ready for Phase 28B — Page-Level AI
