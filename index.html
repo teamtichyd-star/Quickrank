@@ -8,20 +8,30 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js">
 
 
+
+
 </script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js">
+
+
 
 
 </script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js">
 
 
+
+
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
 
 
+
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+
+
 
 
 </script>
@@ -2122,7 +2132,7 @@ async function addKeyword(){
   const pos = parseInt(document.getElementById('newKeywordPos').value) || null;
   if (!kw) return showToast('Enter a keyword', true);
   try {
-    const ref = await db.collection('users').doc(currentUser.uid)
+    const checks=document.querySelectorAll(".kw-suggest-check:checked");const volMap={};checks.forEach(function(c){if(c.dataset.source==="planner"){volMap[c.dataset.kw]={volume:parseInt(c.dataset.vol)||0};}});const ref = await db.collection('users').doc(currentUser.uid)
       .collection('companies').doc(currentCompanyId)
       .collection('keywords').add({
         keyword: kw,
@@ -6586,7 +6596,7 @@ async function loadAISuggestions() {
 }
 
 function parseAdsCsv() { /* Generic Placeholder */ }
-function parsePlannerCsv() { /* Generic Placeholder */ }
+function parsePlannerCsv(){const fileEl=document.getElementById("kwPlannerCsvInput");if(!fileEl||!fileEl.files[0]){return;}const file=fileEl.files[0];const reader=new FileReader();reader.onload=function(e){try{const text=e.target.result;const lines=text.split("\n").map(l=>l.trim()).filter(l=>l.length>0);let headerIndex=-1;for(let i=0;i<lines.length;i++){const low=lines[i].toLowerCase();if(low.includes("keyword")&&low.includes("avg")&&low.includes("monthly")){headerIndex=i;break;}}if(headerIndex===-1){document.getElementById("kwPlannerList").innerHTML="<div style=\"color:#e74c3c;padding:20px;text-align:center;\">Cannot find header row. Please export Keyword Stats CSV from Google Keyword Planner.</div>";return;}const headers=lines[headerIndex].split("\t").map(h=>h.replace(/\"/g,"").trim());const kwIdx=headers.findIndex(h=>h.toLowerCase()==="keyword");const volIdx=headers.findIndex(h=>h.toLowerCase().includes("avg")&&h.toLowerCase().includes("monthly"));const compIdx=headers.findIndex(h=>h.toLowerCase()==="competition"&&!h.toLowerCase().includes("index"));const cpcLowIdx=headers.findIndex(h=>h.toLowerCase().includes("low range"));const cpcHighIdx=headers.findIndex(h=>h.toLowerCase().includes("high range"));if(kwIdx===-1||volIdx===-1){document.getElementById("kwPlannerList").innerHTML="<div style=\"color:#e74c3c;padding:20px;text-align:center;\">Missing required columns.</div>";return;}const dataRows=lines.slice(headerIndex+1);let html="";let count=0;const plannerData=[];dataRows.forEach(row=>{const cols=row.split("\t").map(c=>c.replace(/\"/g,"").trim());if(!cols[kwIdx]||cols[kwIdx].length===0)return;const kw=cols[kwIdx];const vol=parseInt((cols[volIdx]||"").replace(/,/g,""))||0;const comp=compIdx>-1?(cols[compIdx]||""):"";const cpcLow=cpcLowIdx>-1?(cols[cpcLowIdx]||""):"";const cpcHigh=cpcHighIdx>-1?(cols[cpcHighIdx]||""):"";plannerData.push({kw,vol,comp,cpcLow,cpcHigh});html+="<div style=\"display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #f0f0f0;\"><input type=\"checkbox\" class=\"kw-suggest-check\" data-kw=\""+kw+"\" data-vol=\""+vol+"\" data-source=\"planner\" onchange=\"updateKwSelectedCount()\"><div style=\"flex:1;font-size:13px;\">"+kw+"</div><div style=\"font-size:11px;color:#888;\">Vol: "+vol+"</div><div style=\"font-size:11px;color:#aaa;\">"+comp+"</div></div>";count++;});window._plannerData=plannerData;document.getElementById("kwPlannerList").innerHTML=count?html:"<div style=\"color:#aaa;padding:20px;text-align:center;\">No keywords found in CSV</div>";document.getElementById("kwSelectedCount").textContent=count+" keywords loaded";}catch(err){console.error(err);document.getElementById("kwPlannerList").innerHTML="<div style=\"color:#e74c3c;padding:20px;\">Error: "+err.message+"</div>";}};reader.readAsText(file);}
 
 async function addSelectedKeywords() {
   const selected = Object.entries(kwSuggestSelections).filter(([k, v]) => v).map(([k]) => k);
@@ -6598,7 +6608,7 @@ async function addSelectedKeywords() {
   for (const kw of selected) {
     try {
       // 1. Add to Website Keywords (Rank Tracker)
-      const ref = await db.collection('users').doc(currentUser.uid)
+      const checks=document.querySelectorAll(".kw-suggest-check:checked");const volMap={};checks.forEach(function(c){if(c.dataset.source==="planner"){volMap[c.dataset.kw]={volume:parseInt(c.dataset.vol)||0};}});const ref = await db.collection('users').doc(currentUser.uid)
         .collection('companies').doc(companyId)
         .collection('keywords').add({
           keyword: kw,
@@ -6713,6 +6723,8 @@ async function checkLocationLiveRank(kw, currentRank, btn) {
   }
 }
 
+
+
 </script>
 
 <!-- ═══════════════ KEYWORD SUGGEST MODAL (Phase 14C) ═══════════════ -->
@@ -6734,6 +6746,11 @@ async function checkLocationLiveRank(kw, currentRank, btn) {
       <button id="kwTab-ai"      onclick="switchKwTab('ai')"      class="kw-suggest-tab">🤖 From AI</button>
       <button id="kwTab-adcsv"   onclick="switchKwTab('adcsv')"   class="kw-suggest-tab">📊 Ads CSV</button>
       <button id="kwTab-planner" onclick="switchKwTab('planner')" class="kw-suggest-tab">🗂️ Planner CSV</button>
+<div style="padding:20px;text-align:center;">
+  <div style="font-size:14px;margin-bottom:12px;">Upload Google Keyword Planner CSV (Keyword Stats export)</div>
+  <input type="file" accept=".csv" onchange="handleAdsCSV(event)" style="padding:8px;border:1px solid #ddd;border-radius:6px;">
+  <div style="font-size:11px;color:#888;margin-top:10px;">Export → Keyword Planner → Download Keyword Ideas → CSV (Tab Delimited)</div>
+</div>
     </div>
 
     <!-- Body -->
@@ -6774,7 +6791,7 @@ async function checkLocationLiveRank(kw, currentRank, btn) {
           <div style="font-size:11px;color:#aaa;margin-bottom:10px;">Columns needed: Keyword, Avg. monthly searches, Competition, Top of page bid</div>
           <input type="file" id="kwPlannerCsvInput" accept=".csv" onchange="parsePlannerCsv()" style="font-size:13px;">
         </div>
-        <div id="kwPlannerList"><div style="color:#aaa;font-size:13px;text-align:center;padding:30px 0;">Upload CSV to see keywords</div></div>
+        <div style="margin-bottom:8px;"><button onclick="syncPlannerVolumeToExisting()" style="padding:7px 16px;background:#0a5c36;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">🔄 Sync Volume to Existing Keywords</button></div><div id="kwPlannerList"><div style="color:#aaa;font-size:13px;text-align:center;padding:30px 0;">Upload CSV to see keywords</div></div>
       </div>
 
     </div>
@@ -6852,3 +6869,309 @@ async function checkLocationLiveRank(kw, currentRank, btn) {
 
 </body>
 </html>
+<script>
+// =============================
+// Phase 28A — Google Ads CSV Import
+// =============================
+async function handleAdsCSV(event){
+  const file = event.target.files[0];
+  if(!file){return;}
+
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    try{
+      const text = e.target.result;
+      const lines = text.split('\n');
+      if(lines.length < 2){
+        showToast('CSV looks empty', true);
+        return;
+      }
+
+      let headerIndex = lines.findIndex(l =>
+        l.toLowerCase().includes('keyword') &&
+        l.toLowerCase().includes('avg') &&
+        l.toLowerCase().includes('monthly')
+      );
+
+      if(headerIndex === -1){
+        showToast('Invalid CSV. Export from Google Keyword Planner (Keyword Stats).', true);
+        return;
+      }
+
+      const headers = lines[headerIndex].split('\t').map(h=>h.replace(/"/g,'').trim());
+
+      const kwIdx = headers.findIndex(h=>h.toLowerCase()==='keyword');
+      const volIdx = headers.findIndex(h=>h.toLowerCase().includes('avg') && h.toLowerCase().includes('monthly'));
+      const compIdx = headers.findIndex(h=>h.toLowerCase()==='competition');
+      const cpcLowIdx = headers.findIndex(h=>h.toLowerCase().includes('low'));
+      const cpcHighIdx = headers.findIndex(h=>h.toLowerCase().includes('high'));
+
+      const rows = lines.slice(headerIndex+1);
+
+      const updates = [];
+      let matched = 0;
+
+      rows.forEach(row=>{
+        const cols = row.split('\t').map(c=>c.replace(/"/g,'').trim());
+        if(!cols[kwIdx]) return;
+
+        const csvKw = cols[kwIdx].toLowerCase();
+        const volume = parseInt((cols[volIdx]||'').replace(/,/g,'')) || 0;
+        const competition = cols[compIdx] || '';
+        const cpcLow = cols[cpcLowIdx] || '';
+        const cpcHigh = cols[cpcHighIdx] || '';
+
+        const match = keywords.find(k=>k.keyword.toLowerCase()===csvKw);
+        if(match){
+          updates.push({
+            id: match.id,
+            volume,
+            competition,
+            cpcLow,
+            cpcHigh
+          });
+          matched++;
+        }
+      });
+
+      if(!updates.length){
+        showToast('No matching keywords found.', true);
+        return;
+      }
+
+      if(!confirm('Found '+matched+' matching keywords. Update volume data?')) return;
+
+      const batch = db.batch();
+      const compRef = db.collection('users')
+        .doc(currentUser.uid)
+        .collection('companies')
+        .doc(currentCompanyId);
+
+      updates.forEach(u=>{
+        const ref = compRef.collection('keywords').doc(u.id);
+        batch.update(ref,{
+          volume: u.volume,
+          competition: u.competition,
+          cpcLow: u.cpcLow,
+          cpcHigh: u.cpcHigh,
+          lastVolSync: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      await batch.commit();
+
+      showToast('✅ '+matched+' keywords updated from Google Ads');
+      loadKeywords();
+
+    }catch(err){
+      console.error(err);
+      showToast('CSV parsing failed', true);
+    }
+  };
+
+  reader.readAsText(file);
+}
+</script>
+
+<script>
+async function handleAdsCSV(event){
+  const file = event.target.files[0];
+  if(!file){return;}
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    try{
+      const text = e.target.result;
+      const lines = text.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+
+      // Google Keyword Planner CSV: first 2 lines are title + date range
+      // Header row is the one containing "Keyword" AND "Avg. monthly searches"
+      let headerIndex = -1;
+      for(let i=0;i<lines.length;i++){
+        const low = lines[i].toLowerCase();
+        if(low.includes('keyword') && low.includes('avg') && low.includes('monthly')){
+          headerIndex = i;
+          break;
+        }
+      }
+
+      if(headerIndex === -1){
+        showToast('Cannot find header row in CSV', true);
+        return;
+      }
+
+      const headers = lines[headerIndex].split('\t').map(h=>h.replace(/"/g,'').trim());
+
+      const kwIdx = headers.findIndex(h=>h.toLowerCase()==='keyword');
+      const volIdx = headers.findIndex(h=>h.toLowerCase().includes('avg') && h.toLowerCase().includes('monthly'));
+      const compIdx = headers.findIndex(h=>h.toLowerCase()==='competition' && !h.toLowerCase().includes('index'));
+      const cpcLowIdx = headers.findIndex(h=>h.toLowerCase().includes('low range'));
+      const cpcHighIdx = headers.findIndex(h=>h.toLowerCase().includes('high range'));
+
+      if(kwIdx===-1 || volIdx===-1){
+        showToast('Missing required columns: Keyword or Avg. monthly searches', true);
+        return;
+      }
+
+      const dataRows = lines.slice(headerIndex+1);
+      const updates = [];
+      let matched = 0;
+      let totalCsvRows = 0;
+
+      dataRows.forEach(row=>{
+        const cols = row.split('\t').map(c=>c.replace(/"/g,'').trim());
+        if(!cols[kwIdx] || cols[kwIdx].length===0) return;
+        totalCsvRows++;
+
+        const csvKw = cols[kwIdx].toLowerCase().trim();
+        const volume = parseInt((cols[volIdx]||'').replace(/,/g,'')) || 0;
+        const competition = compIdx>-1 ? (cols[compIdx]||'') : '';
+        const cpcLow = cpcLowIdx>-1 ? (cols[cpcLowIdx]||'') : '';
+        const cpcHigh = cpcHighIdx>-1 ? (cols[cpcHighIdx]||'') : '';
+
+        const match = keywords.find(k=>k.keyword.toLowerCase().trim()===csvKw);
+        if(match){
+          updates.push({id:match.id, volume, competition, cpcLow, cpcHigh});
+          matched++;
+        }
+      });
+
+      // Show result summary even if 0 matches
+      const previewEl = document.getElementById('adcsv-preview');
+      if(previewEl){
+        previewEl.innerHTML = '<div style="margin-top:16px;padding:12px;background:#f0f9f4;border-radius:8px;font-size:13px;">'
+          +'<b>CSV loaded:</b> '+totalCsvRows+' keywords in file<br>'
+          +'<b>Matched:</b> '+matched+' keywords found in your Rank Tracker'
+          +(matched===0 ? '<br><span style="color:#e74c3c;">No matches — keyword names must match exactly</span>' : '')
+          +'</div>';
+      }
+
+      if(!matched){
+        showToast('No matching keywords found. Names must match exactly.', true);
+        return;
+      }
+
+      if(!confirm('Update '+matched+' keywords with volume + CPC data from Google Ads?')) return;
+
+      const batch = db.batch();
+      const compRef = db.collection('users').doc(currentUser.uid).collection('companies').doc(currentCompanyId);
+
+      updates.forEach(u=>{
+        const ref = compRef.collection('keywords').doc(u.id);
+        batch.update(ref,{
+          volume: u.volume,
+          competition: u.competition,
+          cpcLow: u.cpcLow,
+          cpcHigh: u.cpcHigh,
+          lastVolSync: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      await batch.commit();
+      showToast('✅ '+matched+' keywords updated with real volume data!');
+      loadKeywords();
+
+    }catch(err){
+      console.error('handleAdsCSV error:',err);
+      showToast('CSV parsing failed: '+err.message, true);
+    }
+  };
+  reader.readAsText(file);
+}
+</script>
+<script>
+// Phase 28A — Override addSelectedKeywords to include volume from planner CSV
+async function addSelectedKeywords() {
+  const selected = Object.entries(kwSuggestSelections).filter(([k,v])=>v).map(([k])=>k);
+  if(!selected.length) return alert('Select keywords first');
+  const companyId = currentCompanyId || getCurrentCompanyId();
+  const btn = document.querySelector('button[onclick="addSelectedKeywords()"]');
+  btn.disabled = true; btn.textContent = 'Adding...';
+
+  // Build volume map from checked planner checkboxes
+  const volMap = {};
+  document.querySelectorAll('.kw-suggest-check:checked').forEach(function(c){
+    if(c.dataset.source === 'planner'){
+      volMap[c.dataset.kw] = {
+        volume: parseInt(c.dataset.vol) || 0
+      };
+    }
+  });
+
+  let addedCount = 0;
+  for(const kw of selected){
+    try{
+      const volData = volMap[kw] || {};
+
+      // 1. Add to Website Keywords with volume if available
+      const ref = await db.collection('users').doc(currentUser.uid)
+        .collection('companies').doc(companyId)
+        .collection('keywords').add({
+          keyword: kw,
+          url: '',
+          position: null,
+          change: 0,
+          clicks: 0,
+          impressions: 0,
+          volume: volData.volume || 0,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+      // 2. Auto-sync to Location Keywords
+      await db.collection('users').doc(currentUser.uid)
+        .collection('companies').doc(companyId)
+        .collection('locationKeywords').doc(ref.id).set({
+          keyword: kw,
+          currentRank: 99,
+          previousRank: 99,
+          lastUpdated: 0,
+          addedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, {merge:true});
+
+      addedCount++;
+    }catch(err){
+      console.warn('Failed to add keyword:', kw, err);
+    }
+  }
+
+  btn.disabled = false; btn.textContent = '➕ Add Selected';
+  closeKeywordSuggest();
+  if(typeof loadKeywords === 'function') await loadKeywords();
+  if(typeof loadLocationKeywords === 'function') await loadLocationKeywords();
+  showToast('Added '+addedCount+' keywords to Website & Locations ✅');
+}
+
+// Phase 28A — Sync volume to EXISTING keywords from planner CSV
+async function syncPlannerVolumeToExisting(){
+  if(!window._plannerData || !window._plannerData.length){
+    showToast('Upload a Planner CSV first', true);
+    return;
+  }
+  const updates = [];
+  window._plannerData.forEach(function(p){
+    const match = keywords.find(k=>k.keyword.toLowerCase().trim()===p.kw.toLowerCase().trim());
+    if(match){
+      updates.push({id:match.id, volume:p.vol, competition:p.comp, cpcLow:p.cpcLow, cpcHigh:p.cpcHigh});
+    }
+  });
+  if(!updates.length){
+    showToast('No existing keywords matched CSV', true);
+    return;
+  }
+  if(!confirm('Update volume for '+updates.length+' existing keywords?')) return;
+  const batch = db.batch();
+  const compRef = db.collection('users').doc(currentUser.uid).collection('companies').doc(currentCompanyId);
+  updates.forEach(function(u){
+    const ref = compRef.collection('keywords').doc(u.id);
+    batch.update(ref,{
+      volume: u.volume,
+      competition: u.competition,
+      cpcLow: u.cpcLow,
+      cpcHigh: u.cpcHigh,
+      lastVolSync: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  });
+  await batch.commit();
+  showToast('✅ Updated '+updates.length+' keywords with real volume!');
+  loadKeywords();
+}
+</script>
