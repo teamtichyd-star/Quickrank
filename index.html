@@ -7578,6 +7578,7 @@ async function runAI(){
         +(serpData.relatedSearches.length?'\n\nRELATED SEARCHES:\n'+serpData.relatedSearches.map(function(q){return '- '+q;}).join('\n'):'')
         +(serpData.featuredSnippet?'\n\nFEATURED SNIPPET:\n'+(serpData.featuredSnippet.answer||serpData.featuredSnippet.snippet||''):'');
       compData = compData + '\n\n' + serpText;
+      console.log('SERP DATA LENGTH:', compData.length, compData.slice(0,300));
     }
 
     // Build unified prompt
