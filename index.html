@@ -70,7 +70,7 @@
 .user-name{font-size:13px;font-weight:600;color:#0a5c36;}
 .logout-btn{padding:7px 14px;background:transparent;border:1.5px solid #d4f5e2;border-radius:8px;color:#666;font-size:12px;cursor:pointer;transition:all 0.2s;font-weight:500;}
 .logout-btn:hover{border-color:#e74c3c;color:#e74c3c;}
-.sidebar{position:fixed;top:var(--topbar-height);left:0;width:var(--sidebar-width);height:calc(100vh - var(--topbar-height));background:#fff;border-right:1px solid #d4f5e2;overflow-y:auto;z-index:900;transition:transform 0.3s;padding:16px 0;}
+.sidebar{position:fixed;top:var(--topbar-height);left:0;width:var(--sidebar-width);height:calc(100vh - var(--topbar-height));background:#fff;border-right:1px solid #d4f5e2;overflow-y:auto;overflow-x:visible;z-index:900;transition:transform 0.3s;padding:16px 0;}
 .sidebar-section{padding:6px 16px;font-size:10px;font-weight:700;color:#999;letter-spacing:1.2px;text-transform:uppercase;margin-top:8px;}
 .nav-parent{display:flex;align-items:center;padding:11px 20px;cursor:pointer;color:#444;font-size:14px;font-weight:500;border-left:3px solid transparent;transition:all 0.2s;gap:12px;user-select:none;}
 .nav-parent:hover{background:#f0fdf6;color:#0a5c36;border-left-color:#d4f5e2;}
@@ -94,8 +94,8 @@
 .sidebar.collapsed .sidebar-section{display:none;}
 .sidebar.collapsed .nav-parent span,.sidebar.collapsed .nav-badge,.sidebar.collapsed .nav-arrow{display:none;}
 .sidebar.collapsed .nav-item span,.sidebar.collapsed .nav-item .nav-badge{display:none;}
-.sidebar.collapsed .nav-parent{padding:11px 0;justify-content:center;}
-.sidebar.collapsed .nav-item{padding:11px 0;justify-content:center;gap:0;}
+.sidebar.collapsed .nav-parent{padding:11px 0;justify-content:center;font-size:0;}.sidebar.collapsed .nav-item{font-size:0;}
+.sidebar.collapsed .nav-item{padding:11px 0;justify-content:center;gap:0;}.sidebar.collapsed .nav-item svg,.sidebar.collapsed .nav-parent svg:first-child{margin:0 auto;}
 .sidebar.collapsed .nav-children{max-height:200px !important;}
 .sidebar.collapsed .nav-child{padding-left:0 !important;justify-content:center;}
 .sidebar-toggle{position:absolute;top:8px;right:-14px;width:28px;height:28px;background:#fff;border:1.5px solid #d4f5e2;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:901;box-shadow:0 2px 6px rgba(0,0,0,0.1);transition:transform 0.3s;}
