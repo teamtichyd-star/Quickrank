@@ -1945,7 +1945,6 @@ function renderKeywords(kwList){
     const posLabel=pos?'#'+pos:'—';
     const change=k.change||0;
     const trendHtml=change===0?`<span class="trend-same">— same</span>`:change>0?`<span class="trend-up">▲${change}</span>`:`<span class="trend-down">▼${Math.abs(change)}</span>`;
-    const urlDisplay=k.url?`<a href="${k.url}" target="_blank" style="color:#0a5c36;font-size:12px;text-decoration:none;">${(()=>{try{return new URL(k.url).pathname.slice(0,22)||'/';}catch(e){return k.url.slice(0,22);}})()}</a>`:'<span style="color:#ccc;font-size:12px;">—</span>';
     const clicks=k.clicks?`<span class="gsc-clicks">${k.clicks.toLocaleString()}</span>`:'<span style="color:#ccc;">—</span>';
     const impr=k.impressions?k.impressions.toLocaleString():'—';
     const ctr=k.ctr?`${(k.ctr*100).toFixed(1)}%`:'—';
